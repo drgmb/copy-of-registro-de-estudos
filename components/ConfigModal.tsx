@@ -52,11 +52,165 @@ const MIN_INTERVAL = 14; // Intervalo mínimo entre revisões
 let changeLog = [];
 
 // ==========================================
-// FUNÇÃO CORS - doGet (Aceita requisições OPTIONS)
+// FUNÇÃO CORS - doGet (Aceita requisições OPTIONS e GET requests)
 // ==========================================
 function doGet(e) {
+  const action = e.parameter.action || '';
+
+  if (action === 'getDiaryData') {
+    try {
+      const ss = SpreadsheetApp.getActiveSpreadsheet();
+      const diaryData = getDiaryDataForToday(ss);
+
+      return ContentService.createTextOutput(JSON.stringify({
+        'status': 'success',
+        'data': diaryData
+      })).setMimeType(ContentService.MimeType.JSON);
+    } catch (err) {
+      return ContentService.createTextOutput(JSON.stringify({
+        'status': 'error',
+        'message': err.toString()
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+  }
+
   return ContentService.createTextOutput(JSON.stringify({ 'status': 'ok' }))
     .setMimeType(ContentService.MimeType.JSON);
+}
+
+// ==========================================
+// OBTER DADOS DO DIÁRIO PARA VISUALIZAÇÃO
+// ==========================================
+function getDiaryDataForToday(ss) {
+  const diarySheet = ss.getSheetByName("DIÁRIO");
+  if (!diarySheet) {
+    return { error: 'Aba DIÁRIO não encontrada' };
+  }
+
+  const diaryData = diarySheet.getDataRange().getValues();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const thisMonth = today.getMonth();
+  const thisYear = today.getFullYear();
+
+  let todayReviews = [];
+  let completedToday = [];
+  let completedThisMonth = 0;
+  let totalCompleted = 0;
+  let upcomingReviews = [];
+  let overdueReviews = [];
+  let allReviews = [];
+
+  // Processar dados (pular cabeçalho)
+  for (let i = 1; i < diaryData.length; i++) {
+    const row = diaryData[i];
+    const id = row[0];
+    const tema = row[1];
+    const acao = row[2];
+    const dataAgendada = new Date(row[3]);
+    const status = row[4];
+
+    if (!status) continue; // Ignorar revisões desativadas
+
+    dataAgendada.setHours(0, 0, 0, 0);
+
+    const reviewObj = {
+      id: id,
+      tema: tema,
+      acao: acao,
+      dataAgendada: formatDate(dataAgendada),
+      status: status,
+      isToday: dataAgendada.getTime() === today.getTime(),
+      isOverdue: dataAgendada < today,
+      isUpcoming: dataAgendada > today,
+      daysDiff: Math.floor((dataAgendada - today) / (1000 * 60 * 60 * 24))
+    };
+
+    allReviews.push(reviewObj);
+
+    // Revisões de hoje
+    if (reviewObj.isToday) {
+      todayReviews.push(reviewObj);
+
+      // Verificar se já foi completada (buscar em DATA ENTRY)
+      const isCompleted = checkIfCompleted(ss, tema, today);
+      if (isCompleted) {
+        completedToday.push(reviewObj);
+      }
+    }
+
+    // Revisões atrasadas
+    if (reviewObj.isOverdue && acao === "Revisão") {
+      overdueReviews.push(reviewObj);
+    }
+
+    // Próximas revisões (próximos 7 dias)
+    if (reviewObj.isUpcoming && reviewObj.daysDiff <= 7) {
+      upcomingReviews.push(reviewObj);
+    }
+
+    // Contar completadas no mês
+    if (acao !== "Primeiro Contato") {
+      const reviewMonth = dataAgendada.getMonth();
+      const reviewYear = dataAgendada.getFullYear();
+
+      if (reviewMonth === thisMonth && reviewYear === thisYear && dataAgendada <= today) {
+        completedThisMonth++;
+      }
+
+      // Total de revisões completadas (passadas)
+      if (dataAgendada <= today) {
+        totalCompleted++;
+      }
+    }
+  }
+
+  // Ordenar revisões
+  upcomingReviews.sort((a, b) => a.daysDiff - b.daysDiff);
+  overdueReviews.sort((a, b) => a.daysDiff - b.daysDiff);
+
+  return {
+    today: {
+      date: formatDate(today),
+      reviews: todayReviews,
+      completed: completedToday,
+      total: todayReviews.length,
+      completedCount: completedToday.length,
+      pendingCount: todayReviews.length - completedToday.length
+    },
+    statistics: {
+      completedToday: completedToday.length,
+      completedThisMonth: completedThisMonth,
+      totalCompleted: totalCompleted,
+      overdueCount: overdueReviews.length,
+      upcomingCount: upcomingReviews.length
+    },
+    overdue: overdueReviews.slice(0, 10), // Limitar a 10
+    upcoming: upcomingReviews.slice(0, 10), // Limitar a 10
+    allActiveReviews: allReviews.filter(r => r.acao === "Revisão").length
+  };
+}
+
+// Verificar se uma revisão foi completada
+function checkIfCompleted(ss, tema, date) {
+  const entrySheet = ss.getSheetByName("DATA ENTRY");
+  if (!entrySheet) return false;
+
+  const entryData = entrySheet.getDataRange().getValues();
+  const dateStr = formatDate(date);
+
+  for (let i = 1; i < entryData.length; i++) {
+    const entryTema = entryData[i][1];
+    const entryDetails = entryData[i][2];
+    const entryDate = entryData[i][8];
+
+    if (entryTema === tema && entryDetails === "Revisão" && entryDate === dateStr) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 // ==========================================

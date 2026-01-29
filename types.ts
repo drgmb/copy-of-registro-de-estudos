@@ -59,6 +59,43 @@ export interface SheetResponse {
   code?: string;
 }
 
+export interface DiaryReview {
+  id: string;
+  tema: string;
+  acao: string;
+  dataAgendada: string;
+  status: boolean;
+  isToday: boolean;
+  isOverdue: boolean;
+  isUpcoming: boolean;
+  daysDiff: number;
+}
+
+export interface TodayData {
+  date: string;
+  reviews: DiaryReview[];
+  completed: DiaryReview[];
+  total: number;
+  completedCount: number;
+  pendingCount: number;
+}
+
+export interface DiaryStatistics {
+  completedToday: number;
+  completedThisMonth: number;
+  totalCompleted: number;
+  overdueCount: number;
+  upcomingCount: number;
+}
+
+export interface DiaryData {
+  today: TodayData;
+  statistics: DiaryStatistics;
+  overdue: DiaryReview[];
+  upcoming: DiaryReview[];
+  allActiveReviews: number;
+}
+
 export enum AppStatus {
   IDLE = 'IDLE',
   SUBMITTING = 'SUBMITTING',
