@@ -790,7 +790,7 @@ function processFirstEntry(ss, data, entryDate, intervalos) {
 // Função auxiliar para formatar data
 function formatDate(date) {
   const d = new Date(date);
-  return Utilities.formatDate(d, Session.getScriptTimeZone(), 'dd/MM/yyyy');
+  return Utilities.formatDate(d, 'America/Sao_Paulo', 'dd/MM/yyyy');
 }
 
 // ==========================================
