@@ -212,7 +212,7 @@ function setupSheets(ss) {
 }
 
 // ==========================================
-// CONFIGURAÇÃO DA ABA HOJE
+// CONFIGURAÇÃO DA ABA HOJE - DESIGN MODERNO
 // ==========================================
 function setupHojeSheet(ss) {
   let hojeSheet = ss.getSheetByName("HOJE");
@@ -223,123 +223,257 @@ function setupHojeSheet(ss) {
     hojeSheet.clear();
   }
 
-  // Configurar largura das colunas
-  hojeSheet.setColumnWidth(1, 50);   // A - Checkbox
-  hojeSheet.setColumnWidth(2, 300);  // B - Tema
-  hojeSheet.setColumnWidth(3, 120);  // C - Ação
-  hojeSheet.setColumnWidth(4, 120);  // D - Data Prevista
-  hojeSheet.setColumnWidth(5, 120);  // E - Data Real
-  hojeSheet.setColumnWidth(6, 100);  // F - Diferença
+  // Configurar largura das colunas (layout mais amplo e moderno)
+  hojeSheet.setColumnWidth(1, 60);   // A - Status/Checkbox
+  hojeSheet.setColumnWidth(2, 350);  // B - Tema (mais espaço)
+  hojeSheet.setColumnWidth(3, 100);  // C - Ação
+  hojeSheet.setColumnWidth(4, 110);  // D - Data
+  hojeSheet.setColumnWidth(5, 140);  // E - Informação extra
+  hojeSheet.setColumnWidth(6, 100);  // F - Progress
 
-  // === CABEÇALHO PRINCIPAL ===
-  hojeSheet.getRange("A1:F1").merge();
-  hojeSheet.getRange("A1").setValue("📅 VISÃO DO DIA - " + formatDate(new Date()));
-  hojeSheet.getRange("A1").setFontSize(16).setFontWeight("bold").setHorizontalAlignment("center");
-  hojeSheet.getRange("A1").setBackground("#4285F4").setFontColor("#FFFFFF");
-  hojeSheet.setRowHeight(1, 40);
+  // Ocultar linhas de grade para visual mais limpo
+  hojeSheet.setHiddenGridlines(true);
 
-  // === ESTATÍSTICAS ===
-  hojeSheet.getRange("A3").setValue("📊 ESTATÍSTICAS");
-  hojeSheet.getRange("A3:F3").setBackground("#E8F0FE").setFontWeight("bold");
+  // === CABEÇALHO HERO ===
+  hojeSheet.getRange("A1:F2").merge();
+  const hoje = new Date();
+  const diaSemana = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"][hoje.getDay()];
+  hojeSheet.getRange("A1").setValue("🎯 DASHBOARD DE REVISÕES\n" + diaSemana + ", " + formatDate(hoje));
+  hojeSheet.getRange("A1").setFontSize(18).setFontWeight("bold").setHorizontalAlignment("center").setVerticalAlignment("middle");
+  hojeSheet.getRange("A1").setBackground("#1a73e8").setFontColor("#FFFFFF");
+  hojeSheet.getRange("A1").setWrap(true);
+  hojeSheet.setRowHeight(1, 60);
+  hojeSheet.setRowHeight(2, 0); // Hide merged row
 
-  // Linhas de estatísticas
-  const stats = [
-    ["Revisões Hoje:", "=COUNTIFS(DIÁRIO!D:D,TODAY(),DIÁRIO!E:E,TRUE)", "Concluídas Hoje:", "=COUNTIFS('DATA ENTRY'!I:I,TEXT(TODAY(),'dd/MM/yyyy'),'DATA ENTRY'!C:C,'Revisão')", "", ""],
-    ["Revisões Este Mês:", "=COUNTIFS(DIÁRIO!D:D,'>='&DATE(YEAR(TODAY()),MONTH(TODAY()),1),DIÁRIO!D:D,'<='&EOMONTH(TODAY(),0),DIÁRIO!E:E,TRUE,DIÁRIO!C:C,'Revisão')", "Concluídas Este Mês:", "=COUNTIFS('DATA ENTRY'!I:I,'>='&TEXT(DATE(YEAR(TODAY()),MONTH(TODAY()),1),'dd/MM/yyyy'),'DATA ENTRY'!I:I,'<='&TEXT(EOMONTH(TODAY(),0),'dd/MM/yyyy'),'DATA ENTRY'!C:C,'Revisão')", "", ""],
-    ["Total de Revisões:", "=COUNTIFS(DIÁRIO!E:E,TRUE,DIÁRIO!C:C,'Revisão')", "Total Concluídas:", "=COUNTA('DATA ENTRY'!A:A)-1", "", ""],
-    ["Atrasadas:", "=COUNTIFS(DIÁRIO!D:D,'<'&TODAY(),DIÁRIO!E:E,TRUE,DIÁRIO!C:C,'Revisão')", "Próximos 7 Dias:", "=COUNTIFS(DIÁRIO!D:D,'>'&TODAY(),DIÁRIO!D:D,'<='&TODAY()+7,DIÁRIO!E:E,TRUE)", "", ""]
-  ];
+  // === CARDS DE ESTATÍSTICAS (Dashboard Style) ===
+  let currentRow = 3;
 
-  for (let i = 0; i < stats.length; i++) {
-    hojeSheet.getRange(4 + i, 1, 1, 6).setValues([stats[i]]);
-  }
+  // Espaçamento
+  hojeSheet.setRowHeight(currentRow, 15);
+  currentRow++;
 
-  // Formatar estatísticas
-  hojeSheet.getRange("A4:A7").setFontWeight("bold").setBackground("#F1F3F4");
-  hojeSheet.getRange("B4:B7").setBackground("#D3E3FD").setHorizontalAlignment("center").setFontWeight("bold");
-  hojeSheet.getRange("C4:C7").setFontWeight("bold").setBackground("#F1F3F4");
-  hojeSheet.getRange("D4:D7").setBackground("#C6EFCE").setHorizontalAlignment("center").setFontWeight("bold");
+  // Card 1: HOJE
+  hojeSheet.getRange(currentRow, 1, 3, 3).merge();
+  hojeSheet.getRange(currentRow, 1).setValue("📅 HOJE\n\n=COUNTIFS(DIÁRIO!D:D,TODAY(),DIÁRIO!E:E,TRUE)&' revisões programadas'\n=COUNTIFS('DATA ENTRY'!I:I,TEXT(TODAY(),'dd/MM/yyyy'),'DATA ENTRY'!C:C,'Revisão')&' concluídas'");
+  hojeSheet.getRange(currentRow, 1).setBackground("#e3f2fd").setFontWeight("bold").setVerticalAlignment("middle").setHorizontalAlignment("center");
+  hojeSheet.getRange(currentRow, 1).setWrap(true).setFontSize(11);
+  hojeSheet.getRange(currentRow, 1, 3, 3).setBorder(true, true, true, true, false, false, "#1976d2", SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
 
-  // === REVISÕES DE HOJE ===
-  hojeSheet.getRange("A9").setValue("✅ REVISÕES PROGRAMADAS PARA HOJE");
-  hojeSheet.getRange("A9:F9").setBackground("#34A853").setFontColor("#FFFFFF").setFontWeight("bold");
+  // Card 2: ESTE MÊS
+  hojeSheet.getRange(currentRow, 4, 3, 3).merge();
+  hojeSheet.getRange(currentRow, 4).setValue("📊 ESTE MÊS\n\n=COUNTIFS('DATA ENTRY'!I:I,'>='&TEXT(DATE(YEAR(TODAY()),MONTH(TODAY()),1),'dd/MM/yyyy'),'DATA ENTRY'!I:I,'<='&TEXT(EOMONTH(TODAY(),0),'dd/MM/yyyy'),'DATA ENTRY'!C:C,'Revisão')&' revisões'");
+  hojeSheet.getRange(currentRow, 4).setBackground("#e8f5e9").setFontWeight("bold").setVerticalAlignment("middle").setHorizontalAlignment("center");
+  hojeSheet.getRange(currentRow, 4).setWrap(true).setFontSize(11);
+  hojeSheet.getRange(currentRow, 4, 3, 3).setBorder(true, true, true, true, false, false, "#388e3c", SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
 
-  // Cabeçalhos da lista
-  const headers = ["✓", "TEMA", "AÇÃO", "DATA PREVISTA", "DATA REALIZADA", "STATUS"];
-  hojeSheet.getRange("A10:F10").setValues([headers]);
-  hojeSheet.getRange("A10:F10").setBackground("#93C47D").setFontWeight("bold").setHorizontalAlignment("center");
+  hojeSheet.setRowHeight(currentRow, 30);
+  hojeSheet.setRowHeight(currentRow + 1, 30);
+  hojeSheet.setRowHeight(currentRow + 2, 30);
+  currentRow += 3;
 
-  // Fórmula para listar revisões de hoje (array formula)
-  const todayFormula = '=ARRAYFORMULA(IF(ROW(DIÁRIO!A:A)=1,"",IF((DIÁRIO!D:D=TODAY())*(DIÁRIO!E:E=TRUE),DIÁRIO!B:B&"|"&DIÁRIO!C:C&"|"&TEXT(DIÁRIO!D:D,"dd/MM/yyyy"),"")))';
+  // Espaçamento
+  hojeSheet.setRowHeight(currentRow, 10);
+  currentRow++;
 
-  // Adicionar 20 linhas para revisões de hoje
-  for (let i = 0; i < 20; i++) {
-    const row = 11 + i;
+  // Card 3: ATRASADAS
+  hojeSheet.getRange(currentRow, 1, 3, 3).merge();
+  hojeSheet.getRange(currentRow, 1).setValue("⚠️ ATRASADAS\n\n=COUNTIFS(DIÁRIO!D:D,'<'&TODAY(),DIÁRIO!E:E,TRUE,DIÁRIO!C:C,'Revisão')&' revisões'");
+  hojeSheet.getRange(currentRow, 1).setBackground("#ffebee").setFontWeight("bold").setVerticalAlignment("middle").setHorizontalAlignment("center");
+  hojeSheet.getRange(currentRow, 1).setWrap(true).setFontSize(11);
+  hojeSheet.getRange(currentRow, 1, 3, 3).setBorder(true, true, true, true, false, false, "#d32f2f", SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
+
+  // Card 4: PRÓXIMOS 7 DIAS
+  hojeSheet.getRange(currentRow, 4, 3, 3).merge();
+  hojeSheet.getRange(currentRow, 4).setValue("📆 PRÓXIMOS 7 DIAS\n\n=COUNTIFS(DIÁRIO!D:D,'>'&TODAY(),DIÁRIO!D:D,'<='&TODAY()+7,DIÁRIO!E:E,TRUE)&' revisões'");
+  hojeSheet.getRange(currentRow, 4).setBackground("#fff3e0").setFontWeight("bold").setVerticalAlignment("middle").setHorizontalAlignment("center");
+  hojeSheet.getRange(currentRow, 4).setWrap(true).setFontSize(11);
+  hojeSheet.getRange(currentRow, 4, 3, 3).setBorder(true, true, true, true, false, false, "#f57c00", SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
+
+  hojeSheet.setRowHeight(currentRow, 30);
+  hojeSheet.setRowHeight(currentRow + 1, 30);
+  hojeSheet.setRowHeight(currentRow + 2, 30);
+  currentRow += 3;
+
+  // Espaçamento
+  hojeSheet.setRowHeight(currentRow, 20);
+  currentRow++;
+
+  // === REVISÕES DE HOJE (Com ajuste dinâmico) ===
+  const todayHeaderRow = currentRow;
+  hojeSheet.getRange(currentRow, 1, 1, 6).merge();
+  hojeSheet.getRange(currentRow, 1).setValue("✅ REVISÕES DE HOJE");
+  hojeSheet.getRange(currentRow, 1).setBackground("#1976d2").setFontColor("#FFFFFF").setFontWeight("bold");
+  hojeSheet.getRange(currentRow, 1).setFontSize(14).setHorizontalAlignment("center").setVerticalAlignment("middle");
+  hojeSheet.setRowHeight(currentRow, 40);
+  currentRow++;
+
+  // Mensagem condicional quando não há revisões
+  hojeSheet.getRange(currentRow, 1, 1, 6).merge();
+  hojeSheet.getRange(currentRow, 1).setFormula("=IF(COUNTIFS(DIÁRIO!D:D,TODAY(),DIÁRIO!E:E,TRUE)=0,'🎉 Nenhuma revisão programada para hoje! Aproveite o dia livre ou estude algo novo.','')");
+  hojeSheet.getRange(currentRow, 1).setBackground("#f1f3f4").setFontColor("#5f6368").setFontStyle("italic");
+  hojeSheet.getRange(currentRow, 1).setHorizontalAlignment("center").setVerticalAlignment("middle").setWrap(true);
+  hojeSheet.setRowHeight(currentRow, 50);
+  currentRow++;
+
+  // Cabeçalhos da tabela
+  const headers = ["✓", "TEMA", "TIPO", "DATA", "CONCLUÍDA EM", "STATUS"];
+  hojeSheet.getRange(currentRow, 1, 1, 6).setValues([headers]);
+  hojeSheet.getRange(currentRow, 1, 1, 6).setBackground("#bbdefb").setFontWeight("bold").setHorizontalAlignment("center");
+  hojeSheet.getRange(currentRow, 1, 1, 6).setBorder(true, true, true, true, false, false, "#1976d2", SpreadsheetApp.BorderStyle.SOLID);
+  hojeSheet.setRowHeight(currentRow, 35);
+  currentRow++;
+
+  // Adicionar linhas de revisões com formatação condicional
+  const todayStartRow = currentRow;
+  for (let i = 0; i < 15; i++) {
+    const row = currentRow + i;
 
     // Checkbox
     hojeSheet.getRange(row, 1).insertCheckboxes();
+    hojeSheet.getRange(row, 1).setBackground("#ffffff").setHorizontalAlignment("center");
 
-    // Fórmulas para buscar dados
+    // Tema
     hojeSheet.getRange(row, 2).setFormula("=IFERROR(INDEX(FILTER(DIÁRIO!B:B,(DIÁRIO!D:D=TODAY())*(DIÁRIO!E:E=TRUE))," + (i+1) + "),'')");
+    hojeSheet.getRange(row, 2).setBackground("#ffffff").setFontWeight("bold");
+
+    // Tipo
     hojeSheet.getRange(row, 3).setFormula("=IFERROR(INDEX(FILTER(DIÁRIO!C:C,(DIÁRIO!D:D=TODAY())*(DIÁRIO!E:E=TRUE))," + (i+1) + "),'')");
+    hojeSheet.getRange(row, 3).setBackground("#f8f9fa").setHorizontalAlignment("center").setFontSize(9);
+
+    // Data
     hojeSheet.getRange(row, 4).setFormula("=IFERROR(TEXT(INDEX(FILTER(DIÁRIO!D:D,(DIÁRIO!D:D=TODAY())*(DIÁRIO!E:E=TRUE))," + (i+1) + "),'dd/MM/yyyy'),'')");
+    hojeSheet.getRange(row, 4).setBackground("#ffffff").setHorizontalAlignment("center");
 
-    // Verificar se foi realizada
-    hojeSheet.getRange(row, 5).setFormula("=IFERROR(IF(B" + row + "='','',IF(COUNTIFS('DATA ENTRY'!B:B,B" + row + ",'DATA ENTRY'!C:C,'Revisão','DATA ENTRY'!I:I,TEXT(TODAY(),'dd/MM/yyyy'))>0,TEXT(TODAY(),'dd/MM/yyyy'),'')),'')");
+    // Concluída em
+    hojeSheet.getRange(row, 5).setFormula("=IFERROR(IF(B" + row + "='','',IF(COUNTIFS('DATA ENTRY'!B:B,B" + row + ",'DATA ENTRY'!C:C,'Revisão','DATA ENTRY'!I:I,TEXT(TODAY(),'dd/MM/yyyy'))>0,TEXT(TODAY(),'dd/MM/yyyy'),'—')),'')");
+    hojeSheet.getRange(row, 5).setBackground("#f8f9fa").setHorizontalAlignment("center");
 
-    // Status
-    hojeSheet.getRange(row, 6).setFormula("=IF(B" + row + "='','',IF(E" + row + "<>'','✅ Concluída','⏳ Pendente'))");
+    // Status com ícones
+    hojeSheet.getRange(row, 6).setFormula("=IF(B" + row + "='','',IF(E" + row + "<>'','✅','⏳'))");
+    hojeSheet.getRange(row, 6).setBackground("#ffffff").setHorizontalAlignment("center").setFontSize(16);
+
+    // Formatação condicional: linhas alternadas
+    if (i % 2 === 0) {
+      hojeSheet.getRange(row, 1, 1, 6).setBackground("#fafafa");
+    }
+
+    hojeSheet.setRowHeight(row, 32);
   }
+  currentRow += 15;
+
+  // Espaçamento
+  hojeSheet.setRowHeight(currentRow, 20);
+  currentRow++;
 
   // === REVISÕES ATRASADAS ===
-  hojeSheet.getRange("A32").setValue("⚠️ REVISÕES ATRASADAS");
-  hojeSheet.getRange("A32:F32").setBackground("#EA4335").setFontColor("#FFFFFF").setFontWeight("bold");
+  hojeSheet.getRange(currentRow, 1, 1, 6).merge();
+  hojeSheet.getRange(currentRow, 1).setValue("⚠️ REVISÕES ATRASADAS");
+  hojeSheet.getRange(currentRow, 1).setBackground("#c62828").setFontColor("#FFFFFF").setFontWeight("bold");
+  hojeSheet.getRange(currentRow, 1).setFontSize(14).setHorizontalAlignment("center").setVerticalAlignment("middle");
+  hojeSheet.setRowHeight(currentRow, 40);
+  currentRow++;
 
-  hojeSheet.getRange("A33:F33").setValues([headers]);
-  hojeSheet.getRange("A33:F33").setBackground("#E06666").setFontWeight("bold").setHorizontalAlignment("center");
+  // Mensagem quando não há revisões atrasadas
+  hojeSheet.getRange(currentRow, 1, 1, 6).merge();
+  hojeSheet.getRange(currentRow, 1).setFormula("=IF(COUNTIFS(DIÁRIO!D:D,'<'&TODAY(),DIÁRIO!E:E,TRUE,DIÁRIO!C:C,'Revisão')=0,'✨ Parabéns! Nenhuma revisão atrasada.','')");
+  hojeSheet.getRange(currentRow, 1).setBackground("#e8f5e9").setFontColor("#2e7d32").setFontStyle("italic");
+  hojeSheet.getRange(currentRow, 1).setHorizontalAlignment("center").setVerticalAlignment("middle");
+  hojeSheet.setRowHeight(currentRow, 40);
+  currentRow++;
 
-  // Adicionar 15 linhas para revisões atrasadas
-  for (let i = 0; i < 15; i++) {
-    const row = 34 + i;
+  // Cabeçalhos
+  hojeSheet.getRange(currentRow, 1, 1, 6).setValues([["❌", "TEMA", "TIPO", "DEVERIA SER", "DIAS ATRASADA", "STATUS"]]);
+  hojeSheet.getRange(currentRow, 1, 1, 6).setBackground("#ffcdd2").setFontWeight("bold").setHorizontalAlignment("center");
+  hojeSheet.getRange(currentRow, 1, 1, 6).setBorder(true, true, true, true, false, false, "#c62828", SpreadsheetApp.BorderStyle.SOLID);
+  hojeSheet.setRowHeight(currentRow, 35);
+  currentRow++;
 
-    hojeSheet.getRange(row, 1).insertCheckboxes();
+  // Linhas de revisões atrasadas
+  for (let i = 0; i < 10; i++) {
+    const row = currentRow + i;
+
+    hojeSheet.getRange(row, 1).setValue("⚠️").setHorizontalAlignment("center").setFontSize(14);
     hojeSheet.getRange(row, 2).setFormula("=IFERROR(INDEX(FILTER(DIÁRIO!B:B,(DIÁRIO!D:D<TODAY())*(DIÁRIO!E:E=TRUE)*(DIÁRIO!C:C='Revisão'))," + (i+1) + "),'')");
+    hojeSheet.getRange(row, 2).setFontWeight("bold");
     hojeSheet.getRange(row, 3).setFormula("=IFERROR(INDEX(FILTER(DIÁRIO!C:C,(DIÁRIO!D:D<TODAY())*(DIÁRIO!E:E=TRUE)*(DIÁRIO!C:C='Revisão'))," + (i+1) + "),'')");
+    hojeSheet.getRange(row, 3).setHorizontalAlignment("center").setFontSize(9);
     hojeSheet.getRange(row, 4).setFormula("=IFERROR(TEXT(INDEX(FILTER(DIÁRIO!D:D,(DIÁRIO!D:D<TODAY())*(DIÁRIO!E:E=TRUE)*(DIÁRIO!C:C='Revisão'))," + (i+1) + "),'dd/MM/yyyy'),'')");
-    hojeSheet.getRange(row, 5).setFormula("=IFERROR(IF(B" + row + "='','',IF(COUNTIFS('DATA ENTRY'!B:B,B" + row + ",'DATA ENTRY'!C:C,'Revisão','DATA ENTRY'!I:I,TEXT(TODAY(),'dd/MM/yyyy'))>0,TEXT(TODAY(),'dd/MM/yyyy'),'')),'')");
-    hojeSheet.getRange(row, 6).setFormula("=IF(B" + row + "='','',IF(E" + row + "<>'',' ✅ Concluída',TEXT(TODAY()-DATEVALUE(D" + row + "),'0')&' dias'))");
+    hojeSheet.getRange(row, 4).setHorizontalAlignment("center");
+    hojeSheet.getRange(row, 5).setFormula("=IF(B" + row + "='','',TEXT(TODAY()-DATEVALUE(D" + row + "),'0')&' dias')");
+    hojeSheet.getRange(row, 5).setHorizontalAlignment("center").setFontWeight("bold").setFontColor("#c62828");
+    hojeSheet.getRange(row, 6).setFormula("=IF(B" + row + "='','',IF(COUNTIFS('DATA ENTRY'!B:B,B" + row + ",'DATA ENTRY'!C:C,'Revisão','DATA ENTRY'!I:I,TEXT(TODAY(),'dd/MM/yyyy'))>0,'✅','❌'))");
+    hojeSheet.getRange(row, 6).setHorizontalAlignment("center").setFontSize(16);
 
-    // Colorir em vermelho claro
-    hojeSheet.getRange(row, 1, 1, 6).setBackground("#F4CCCC");
+    // Fundo alternado
+    hojeSheet.getRange(row, 1, 1, 6).setBackground(i % 2 === 0 ? "#ffebee" : "#ffcdd2");
+    hojeSheet.setRowHeight(row, 32);
   }
+  currentRow += 10;
 
-  // === PRÓXIMAS REVISÕES ===
-  hojeSheet.getRange("A50").setValue("📅 PRÓXIMAS REVISÕES (7 DIAS)");
-  hojeSheet.getRange("A50:F50").setBackground("#FBBC04").setFontColor("#FFFFFF").setFontWeight("bold");
+  // Espaçamento
+  hojeSheet.setRowHeight(currentRow, 20);
+  currentRow++;
 
-  hojeSheet.getRange("A51:F51").setValues([headers]);
-  hojeSheet.getRange("A51:F51").setBackground("#FFD966").setFontWeight("bold").setHorizontalAlignment("center");
+  // === PRÓXIMAS REVISÕES (7 DIAS) ===
+  hojeSheet.getRange(currentRow, 1, 1, 6).merge();
+  hojeSheet.getRange(currentRow, 1).setValue("📆 PRÓXIMAS REVISÕES (7 DIAS)");
+  hojeSheet.getRange(currentRow, 1).setBackground("#f57c00").setFontColor("#FFFFFF").setFontWeight("bold");
+  hojeSheet.getRange(currentRow, 1).setFontSize(14).setHorizontalAlignment("center").setVerticalAlignment("middle");
+  hojeSheet.setRowHeight(currentRow, 40);
+  currentRow++;
 
-  // Adicionar 15 linhas para próximas revisões
-  for (let i = 0; i < 15; i++) {
-    const row = 52 + i;
+  // Mensagem quando não há próximas revisões
+  hojeSheet.getRange(currentRow, 1, 1, 6).merge();
+  hojeSheet.getRange(currentRow, 1).setFormula("=IF(COUNTIFS(DIÁRIO!D:D,'>'&TODAY(),DIÁRIO!D:D,'<='&TODAY()+7,DIÁRIO!E:E,TRUE)=0,'📭 Nenhuma revisão programada para os próximos 7 dias.','')");
+  hojeSheet.getRange(currentRow, 1).setBackground("#fff3e0").setFontColor("#e65100").setFontStyle("italic");
+  hojeSheet.getRange(currentRow, 1).setHorizontalAlignment("center").setVerticalAlignment("middle");
+  hojeSheet.setRowHeight(currentRow, 40);
+  currentRow++;
 
-    hojeSheet.getRange(row, 1).insertCheckboxes();
+  // Cabeçalhos
+  hojeSheet.getRange(currentRow, 1, 1, 6).setValues([["📌", "TEMA", "TIPO", "DATA AGENDADA", "FALTAM", "PRIORIDADE"]]);
+  hojeSheet.getRange(currentRow, 1, 1, 6).setBackground("#ffe0b2").setFontWeight("bold").setHorizontalAlignment("center");
+  hojeSheet.getRange(currentRow, 1, 1, 6).setBorder(true, true, true, true, false, false, "#f57c00", SpreadsheetApp.BorderStyle.SOLID);
+  hojeSheet.setRowHeight(currentRow, 35);
+  currentRow++;
+
+  // Linhas de próximas revisões
+  for (let i = 0; i < 10; i++) {
+    const row = currentRow + i;
+
+    hojeSheet.getRange(row, 1).setValue("📌").setHorizontalAlignment("center").setFontSize(14);
     hojeSheet.getRange(row, 2).setFormula("=IFERROR(INDEX(FILTER(DIÁRIO!B:B,(DIÁRIO!D:D>TODAY())*(DIÁRIO!D:D<=TODAY()+7)*(DIÁRIO!E:E=TRUE))," + (i+1) + "),'')");
+    hojeSheet.getRange(row, 2).setFontWeight("bold");
     hojeSheet.getRange(row, 3).setFormula("=IFERROR(INDEX(FILTER(DIÁRIO!C:C,(DIÁRIO!D:D>TODAY())*(DIÁRIO!D:D<=TODAY()+7)*(DIÁRIO!E:E=TRUE))," + (i+1) + "),'')");
+    hojeSheet.getRange(row, 3).setHorizontalAlignment("center").setFontSize(9);
     hojeSheet.getRange(row, 4).setFormula("=IFERROR(TEXT(INDEX(FILTER(DIÁRIO!D:D,(DIÁRIO!D:D>TODAY())*(DIÁRIO!D:D<=TODAY()+7)*(DIÁRIO!E:E=TRUE))," + (i+1) + "),'dd/MM/yyyy'),'')");
-    hojeSheet.getRange(row, 5).setValue("");
-    hojeSheet.getRange(row, 6).setFormula("=IF(B" + row + "='','','Em '&TEXT(DATEVALUE(D" + row + ")-TODAY(),'0')&' dias')");
+    hojeSheet.getRange(row, 4).setHorizontalAlignment("center");
+    hojeSheet.getRange(row, 5).setFormula("=IF(B" + row + "='','',TEXT(DATEVALUE(D" + row + ")-TODAY(),'0')&' dias')");
+    hojeSheet.getRange(row, 5).setHorizontalAlignment("center").setFontWeight("bold").setFontColor("#f57c00");
+    hojeSheet.getRange(row, 6).setFormula("=IF(B" + row + "='','',IF(DATEVALUE(D" + row + ")-TODAY()<=2,'🔥 Alta',IF(DATEVALUE(D" + row + ")-TODAY()<=4,'⚡ Média','✅ Normal')))");
+    hojeSheet.getRange(row, 6).setHorizontalAlignment("center").setFontSize(10);
 
-    // Colorir em amarelo claro
-    hojeSheet.getRange(row, 1, 1, 6).setBackground("#FFF2CC");
+    // Fundo alternado
+    hojeSheet.getRange(row, 1, 1, 6).setBackground(i % 2 === 0 ? "#fff8e1" : "#ffe0b2");
+    hojeSheet.setRowHeight(row, 32);
   }
+  currentRow += 10;
 
-  // Aplicar bordas em toda a planilha
-  hojeSheet.getRange("A1:F67").setBorder(true, true, true, true, true, true);
+  // === RODAPÉ ===
+  hojeSheet.setRowHeight(currentRow, 20);
+  currentRow++;
 
-  // Congelar linhas de cabeçalho
-  hojeSheet.setFrozenRows(1);
+  hojeSheet.getRange(currentRow, 1, 1, 6).merge();
+  hojeSheet.getRange(currentRow, 1).setValue("🤖 Dashboard atualizado automaticamente | Última visualização: " + formatDate(new Date()));
+  hojeSheet.getRange(currentRow, 1).setBackground("#37474f").setFontColor("#ffffff");
+  hojeSheet.getRange(currentRow, 1).setHorizontalAlignment("center").setVerticalAlignment("middle").setFontSize(9);
+  hojeSheet.setRowHeight(currentRow, 30);
+
+  // Congelar cabeçalho principal
+  hojeSheet.setFrozenRows(2);
+
+  // Proteção visual - adicionar bordas nas seções principais
+  hojeSheet.getRange("A1:F" + currentRow).setBorder(true, true, true, true, false, false, "#424242", SpreadsheetApp.BorderStyle.SOLID);
 }
 
 // ==========================================
