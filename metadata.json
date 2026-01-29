@@ -1,0 +1,5 @@
+{
+  "name": "Copy of Registro de Estudos",
+  "description": "Aplicativo para registrar sessões de estudo, integrado com Google Sheets e IA.",
+  "requestFramePermissions": []
+}
