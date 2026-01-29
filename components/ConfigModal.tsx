@@ -1009,6 +1009,95 @@ function processReview(ss, data, entryDate) {
 }
 
 // ==========================================
+// REAVALIAÇÃO DA REVISÃO EXTRA
+// ==========================================
+function reevaluateExtraReview(ss, data) {
+  const diarySheet = ss.getSheetByName("DIÁRIO");
+  const diaryData = diarySheet.getDataRange().getValues();
+
+  const year = new Date().getFullYear();
+  const julyEnd = new Date(year, 6, 31);
+  const septemberStart = new Date(year, 8, 1);
+
+  // Buscar todas as revisões ativas do tema
+  const reviews = [];
+  for (let i = 1; i < diaryData.length; i++) {
+    if ((data.topicId && diaryData[i][0] == data.topicId) || diaryData[i][1] == data.topic) {
+      if (diaryData[i][2] === "Revisão" && diaryData[i][4] === true) {
+        reviews.push({
+          index: i + 1,
+          date: new Date(diaryData[i][3])
+        });
+      }
+    }
+  }
+
+  if (reviews.length === 0) return;
+
+  // Ordenar por data
+  reviews.sort((a, b) => a.date - b.date);
+
+  // Identificar revisão extra (revisão em setembro ou depois que não seja parte da sequência normal)
+  let extraReviewIndex = -1;
+  let lastNormalReviewDate = null;
+
+  // A revisão extra é identificada como a última revisão se estiver em setembro+
+  const lastReview = reviews[reviews.length - 1];
+  if (lastReview.date >= septemberStart) {
+    // Verificar se há revisões antes de setembro
+    const reviewsBeforeSeptember = reviews.filter(r => r.date < septemberStart);
+    if (reviewsBeforeSeptember.length > 0) {
+      extraReviewIndex = reviews.length - 1;
+      lastNormalReviewDate = reviewsBeforeSeptember[reviewsBeforeSeptember.length - 1].date;
+    } else {
+      // Todas as revisões são em setembro+, não há revisão extra
+      lastNormalReviewDate = reviews[reviews.length - 1].date;
+    }
+  } else {
+    // Última revisão é antes de setembro, não há revisão extra
+    lastNormalReviewDate = lastReview.date;
+  }
+
+  // Decidir se precisa de revisão extra
+  const needsExtraReview = lastNormalReviewDate && lastNormalReviewDate <= julyEnd;
+  const hasExtraReview = extraReviewIndex !== -1;
+
+  if (needsExtraReview && !hasExtraReview) {
+    // Adicionar revisão extra
+    const daysBetween = Math.floor((DEADLINE_DATE - septemberStart) / (1000 * 60 * 60 * 24));
+    const randomDays = Math.floor(Math.random() * daysBetween);
+    const extraReviewDate = new Date(septemberStart);
+    extraReviewDate.setDate(extraReviewDate.getDate() + randomDays);
+
+    diarySheet.appendRow([
+      data.topicId,
+      data.topic,
+      "Revisão",
+      extraReviewDate,
+      true
+    ]);
+
+    changeLog.push({
+      type: 'EXTRA_REVIEW_ADDED',
+      action: 'Revisão Extra Adicionada (Reavaliação)',
+      date: formatDate(extraReviewDate),
+      reason: 'Última revisão normal em ' + formatDate(lastNormalReviewDate) + ' (antes de julho)'
+    });
+  } else if (!needsExtraReview && hasExtraReview) {
+    // Remover revisão extra
+    const range = diarySheet.getRange(reviews[extraReviewIndex].index, 5);
+    range.setValue(false);
+
+    changeLog.push({
+      type: 'EXTRA_REVIEW_REMOVED',
+      action: 'Revisão Extra Removida (Reavaliação)',
+      date: formatDate(reviews[extraReviewIndex].date),
+      reason: 'Última revisão normal em ' + formatDate(lastNormalReviewDate) + ' (após julho)'
+    });
+  }
+}
+
+// ==========================================
 // TRATAMENTO DE EXTRAPOLAÇÕES
 // ==========================================
 function handleDeadlineExtrapolations(ss, data) {
@@ -1127,6 +1216,9 @@ function processEntry(ss, data) {
   }
 
   handleDeadlineExtrapolations(ss, data);
+
+  // Reavaliar regra da revisão extra após mudanças nas datas
+  reevaluateExtraReview(ss, data);
 }
 
 // ==========================================
