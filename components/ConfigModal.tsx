@@ -65,7 +65,18 @@ function doPost(e) {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     setupSheets(ss);
 
-    const data = JSON.parse(e.postData.contents);
+    // Processar dados URL-encoded ao invés de JSON
+    const data = {
+      topicId: e.parameter.topicId || '',
+      topic: e.parameter.topic || '',
+      details: e.parameter.details || '',
+      difficulty: e.parameter.difficulty || '',
+      isClass: e.parameter.isClass === 'true',
+      isQuestions: e.parameter.isQuestions === 'true',
+      totalQuestions: parseInt(e.parameter.totalQuestions) || 0,
+      correctQuestions: parseInt(e.parameter.correctQuestions) || 0,
+      date: e.parameter.date || ''
+    };
 
     // VALIDAR DUPLICATA ANTES DE SALVAR
     if (isDuplicateFirstEntry(ss, data)) {

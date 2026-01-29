@@ -126,13 +126,21 @@ const App: React.FC = () => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-      // Enviar como JSON
+      // Usar URLSearchParams para evitar preflight CORS
+      const formData = new URLSearchParams();
+      formData.append('topicId', data.topicId);
+      formData.append('topic', data.topic);
+      formData.append('details', data.details);
+      formData.append('difficulty', data.difficulty);
+      formData.append('isClass', String(data.isClass));
+      formData.append('isQuestions', String(data.isQuestions));
+      formData.append('totalQuestions', String(data.totalQuestions));
+      formData.append('correctQuestions', String(data.correctQuestions));
+      formData.append('date', data.date);
+
       const response = await fetch(sheetUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(data),
+        body: formData,
         signal: controller.signal
       });
 
