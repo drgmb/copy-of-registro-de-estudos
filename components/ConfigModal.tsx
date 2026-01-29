@@ -52,165 +52,11 @@ const MIN_INTERVAL = 14; // Intervalo mínimo entre revisões
 let changeLog = [];
 
 // ==========================================
-// FUNÇÃO CORS - doGet (Aceita requisições OPTIONS e GET requests)
+// FUNÇÃO CORS - doGet (Aceita requisições OPTIONS)
 // ==========================================
 function doGet(e) {
-  const action = e.parameter.action || '';
-
-  if (action === 'getDiaryData') {
-    try {
-      const ss = SpreadsheetApp.getActiveSpreadsheet();
-      const diaryData = getDiaryDataForToday(ss);
-
-      return ContentService.createTextOutput(JSON.stringify({
-        'status': 'success',
-        'data': diaryData
-      })).setMimeType(ContentService.MimeType.JSON);
-    } catch (err) {
-      return ContentService.createTextOutput(JSON.stringify({
-        'status': 'error',
-        'message': err.toString()
-      })).setMimeType(ContentService.MimeType.JSON);
-    }
-  }
-
   return ContentService.createTextOutput(JSON.stringify({ 'status': 'ok' }))
     .setMimeType(ContentService.MimeType.JSON);
-}
-
-// ==========================================
-// OBTER DADOS DO DIÁRIO PARA VISUALIZAÇÃO
-// ==========================================
-function getDiaryDataForToday(ss) {
-  const diarySheet = ss.getSheetByName("DIÁRIO");
-  if (!diarySheet) {
-    return { error: 'Aba DIÁRIO não encontrada' };
-  }
-
-  const diaryData = diarySheet.getDataRange().getValues();
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const thisMonth = today.getMonth();
-  const thisYear = today.getFullYear();
-
-  let todayReviews = [];
-  let completedToday = [];
-  let completedThisMonth = 0;
-  let totalCompleted = 0;
-  let upcomingReviews = [];
-  let overdueReviews = [];
-  let allReviews = [];
-
-  // Processar dados (pular cabeçalho)
-  for (let i = 1; i < diaryData.length; i++) {
-    const row = diaryData[i];
-    const id = row[0];
-    const tema = row[1];
-    const acao = row[2];
-    const dataAgendada = new Date(row[3]);
-    const status = row[4];
-
-    if (!status) continue; // Ignorar revisões desativadas
-
-    dataAgendada.setHours(0, 0, 0, 0);
-
-    const reviewObj = {
-      id: id,
-      tema: tema,
-      acao: acao,
-      dataAgendada: formatDate(dataAgendada),
-      status: status,
-      isToday: dataAgendada.getTime() === today.getTime(),
-      isOverdue: dataAgendada < today,
-      isUpcoming: dataAgendada > today,
-      daysDiff: Math.floor((dataAgendada - today) / (1000 * 60 * 60 * 24))
-    };
-
-    allReviews.push(reviewObj);
-
-    // Revisões de hoje
-    if (reviewObj.isToday) {
-      todayReviews.push(reviewObj);
-
-      // Verificar se já foi completada (buscar em DATA ENTRY)
-      const isCompleted = checkIfCompleted(ss, tema, today);
-      if (isCompleted) {
-        completedToday.push(reviewObj);
-      }
-    }
-
-    // Revisões atrasadas
-    if (reviewObj.isOverdue && acao === "Revisão") {
-      overdueReviews.push(reviewObj);
-    }
-
-    // Próximas revisões (próximos 7 dias)
-    if (reviewObj.isUpcoming && reviewObj.daysDiff <= 7) {
-      upcomingReviews.push(reviewObj);
-    }
-
-    // Contar completadas no mês
-    if (acao !== "Primeiro Contato") {
-      const reviewMonth = dataAgendada.getMonth();
-      const reviewYear = dataAgendada.getFullYear();
-
-      if (reviewMonth === thisMonth && reviewYear === thisYear && dataAgendada <= today) {
-        completedThisMonth++;
-      }
-
-      // Total de revisões completadas (passadas)
-      if (dataAgendada <= today) {
-        totalCompleted++;
-      }
-    }
-  }
-
-  // Ordenar revisões
-  upcomingReviews.sort((a, b) => a.daysDiff - b.daysDiff);
-  overdueReviews.sort((a, b) => a.daysDiff - b.daysDiff);
-
-  return {
-    today: {
-      date: formatDate(today),
-      reviews: todayReviews,
-      completed: completedToday,
-      total: todayReviews.length,
-      completedCount: completedToday.length,
-      pendingCount: todayReviews.length - completedToday.length
-    },
-    statistics: {
-      completedToday: completedToday.length,
-      completedThisMonth: completedThisMonth,
-      totalCompleted: totalCompleted,
-      overdueCount: overdueReviews.length,
-      upcomingCount: upcomingReviews.length
-    },
-    overdue: overdueReviews.slice(0, 10), // Limitar a 10
-    upcoming: upcomingReviews.slice(0, 10), // Limitar a 10
-    allActiveReviews: allReviews.filter(r => r.acao === "Revisão").length
-  };
-}
-
-// Verificar se uma revisão foi completada
-function checkIfCompleted(ss, tema, date) {
-  const entrySheet = ss.getSheetByName("DATA ENTRY");
-  if (!entrySheet) return false;
-
-  const entryData = entrySheet.getDataRange().getValues();
-  const dateStr = formatDate(date);
-
-  for (let i = 1; i < entryData.length; i++) {
-    const entryTema = entryData[i][1];
-    const entryDetails = entryData[i][2];
-    const entryDate = entryData[i][8];
-
-    if (entryTema === tema && entryDetails === "Revisão" && entryDate === dateStr) {
-      return true;
-    }
-  }
-
-  return false;
 }
 
 // ==========================================
@@ -360,6 +206,140 @@ function setupSheets(ss) {
       "TIMESTAMP"
     ]);
   }
+
+  // Criar ou atualizar aba HOJE
+  setupHojeSheet(ss);
+}
+
+// ==========================================
+// CONFIGURAÇÃO DA ABA HOJE
+// ==========================================
+function setupHojeSheet(ss) {
+  let hojeSheet = ss.getSheetByName("HOJE");
+
+  if (!hojeSheet) {
+    hojeSheet = ss.insertSheet("HOJE");
+  } else {
+    hojeSheet.clear();
+  }
+
+  // Configurar largura das colunas
+  hojeSheet.setColumnWidth(1, 50);   // A - Checkbox
+  hojeSheet.setColumnWidth(2, 300);  // B - Tema
+  hojeSheet.setColumnWidth(3, 120);  // C - Ação
+  hojeSheet.setColumnWidth(4, 120);  // D - Data Prevista
+  hojeSheet.setColumnWidth(5, 120);  // E - Data Real
+  hojeSheet.setColumnWidth(6, 100);  // F - Diferença
+
+  // === CABEÇALHO PRINCIPAL ===
+  hojeSheet.getRange("A1:F1").merge();
+  hojeSheet.getRange("A1").setValue("📅 VISÃO DO DIA - " + formatDate(new Date()));
+  hojeSheet.getRange("A1").setFontSize(16).setFontWeight("bold").setHorizontalAlignment("center");
+  hojeSheet.getRange("A1").setBackground("#4285F4").setFontColor("#FFFFFF");
+  hojeSheet.setRowHeight(1, 40);
+
+  // === ESTATÍSTICAS ===
+  hojeSheet.getRange("A3").setValue("📊 ESTATÍSTICAS");
+  hojeSheet.getRange("A3:F3").setBackground("#E8F0FE").setFontWeight("bold");
+
+  // Linhas de estatísticas
+  const stats = [
+    ["Revisões Hoje:", "=COUNTIFS(DIÁRIO!D:D,TODAY(),DIÁRIO!E:E,TRUE)", "Concluídas Hoje:", "=COUNTIFS('DATA ENTRY'!I:I,TEXT(TODAY(),\"dd/MM/yyyy\"),'DATA ENTRY'!C:C,\"Revisão\")", "", ""],
+    ["Revisões Este Mês:", "=COUNTIFS(DIÁRIO!D:D,\">=\"&DATE(YEAR(TODAY()),MONTH(TODAY()),1),DIÁRIO!D:D,\"<=\"&EOMONTH(TODAY(),0),DIÁRIO!E:E,TRUE,DIÁRIO!C:C,\"Revisão\")", "Concluídas Este Mês:", "=COUNTIFS('DATA ENTRY'!I:I,\">=\"&TEXT(DATE(YEAR(TODAY()),MONTH(TODAY()),1),\"dd/MM/yyyy\"),'DATA ENTRY'!I:I,\"<=\"&TEXT(EOMONTH(TODAY(),0),\"dd/MM/yyyy\"),'DATA ENTRY'!C:C,\"Revisão\")", "", ""],
+    ["Total de Revisões:", "=COUNTIFS(DIÁRIO!E:E,TRUE,DIÁRIO!C:C,\"Revisão\")", "Total Concluídas:", "=COUNTA('DATA ENTRY'!A:A)-1", "", ""],
+    ["Atrasadas:", "=COUNTIFS(DIÁRIO!D:D,\"<\"&TODAY(),DIÁRIO!E:E,TRUE,DIÁRIO!C:C,\"Revisão\")", "Próximos 7 Dias:", "=COUNTIFS(DIÁRIO!D:D,\">\"&TODAY(),DIÁRIO!D:D,\"<=\"&TODAY()+7,DIÁRIO!E:E,TRUE)", "", ""]
+  ];
+
+  for (let i = 0; i < stats.length; i++) {
+    hojeSheet.getRange(4 + i, 1, 1, 6).setValues([stats[i]]);
+  }
+
+  // Formatar estatísticas
+  hojeSheet.getRange("A4:A7").setFontWeight("bold").setBackground("#F1F3F4");
+  hojeSheet.getRange("B4:B7").setBackground("#D3E3FD").setHorizontalAlignment("center").setFontWeight("bold");
+  hojeSheet.getRange("C4:C7").setFontWeight("bold").setBackground("#F1F3F4");
+  hojeSheet.getRange("D4:D7").setBackground("#C6EFCE").setHorizontalAlignment("center").setFontWeight("bold");
+
+  // === REVISÕES DE HOJE ===
+  hojeSheet.getRange("A9").setValue("✅ REVISÕES PROGRAMADAS PARA HOJE");
+  hojeSheet.getRange("A9:F9").setBackground("#34A853").setFontColor("#FFFFFF").setFontWeight("bold");
+
+  // Cabeçalhos da lista
+  const headers = ["✓", "TEMA", "AÇÃO", "DATA PREVISTA", "DATA REALIZADA", "STATUS"];
+  hojeSheet.getRange("A10:F10").setValues([headers]);
+  hojeSheet.getRange("A10:F10").setBackground("#93C47D").setFontWeight("bold").setHorizontalAlignment("center");
+
+  // Fórmula para listar revisões de hoje (array formula)
+  const todayFormula = '=ARRAYFORMULA(IF(ROW(DIÁRIO!A:A)=1,"",IF((DIÁRIO!D:D=TODAY())*(DIÁRIO!E:E=TRUE),DIÁRIO!B:B&"|"&DIÁRIO!C:C&"|"&TEXT(DIÁRIO!D:D,"dd/MM/yyyy"),"")))';
+
+  // Adicionar 20 linhas para revisões de hoje
+  for (let i = 0; i < 20; i++) {
+    const row = 11 + i;
+
+    // Checkbox
+    hojeSheet.getRange(row, 1).insertCheckboxes();
+
+    // Fórmulas para buscar dados
+    hojeSheet.getRange(row, 2).setFormula(\`=IFERROR(INDEX(FILTER(DIÁRIO!B:B,(DIÁRIO!D:D=TODAY())*(DIÁRIO!E:E=TRUE)),\${i+1}),"")\`);
+    hojeSheet.getRange(row, 3).setFormula(\`=IFERROR(INDEX(FILTER(DIÁRIO!C:C,(DIÁRIO!D:D=TODAY())*(DIÁRIO!E:E=TRUE)),\${i+1}),"")\`);
+    hojeSheet.getRange(row, 4).setFormula(\`=IFERROR(TEXT(INDEX(FILTER(DIÁRIO!D:D,(DIÁRIO!D:D=TODAY())*(DIÁRIO!E:E=TRUE)),\${i+1}),"dd/MM/yyyy"),"")\`);
+
+    // Verificar se foi realizada
+    hojeSheet.getRange(row, 5).setFormula(\`=IFERROR(IF(B\${row}="","",IF(COUNTIFS('DATA ENTRY'!B:B,B\${row},'DATA ENTRY'!C:C,"Revisão",'DATA ENTRY'!I:I,TEXT(TODAY(),"dd/MM/yyyy"))>0,TEXT(TODAY(),"dd/MM/yyyy"),"")),"")\`);
+
+    // Status
+    hojeSheet.getRange(row, 6).setFormula(\`=IF(B\${row}="","",IF(E\${row}<>"","✅ Concluída","⏳ Pendente"))\`);
+  }
+
+  // === REVISÕES ATRASADAS ===
+  hojeSheet.getRange("A32").setValue("⚠️ REVISÕES ATRASADAS");
+  hojeSheet.getRange("A32:F32").setBackground("#EA4335").setFontColor("#FFFFFF").setFontWeight("bold");
+
+  hojeSheet.getRange("A33:F33").setValues([headers]);
+  hojeSheet.getRange("A33:F33").setBackground("#E06666").setFontWeight("bold").setHorizontalAlignment("center");
+
+  // Adicionar 15 linhas para revisões atrasadas
+  for (let i = 0; i < 15; i++) {
+    const row = 34 + i;
+
+    hojeSheet.getRange(row, 1).insertCheckboxes();
+    hojeSheet.getRange(row, 2).setFormula(\`=IFERROR(INDEX(FILTER(DIÁRIO!B:B,(DIÁRIO!D:D<TODAY())*(DIÁRIO!E:E=TRUE)*(DIÁRIO!C:C="Revisão")),\${i+1}),"")\`);
+    hojeSheet.getRange(row, 3).setFormula(\`=IFERROR(INDEX(FILTER(DIÁRIO!C:C,(DIÁRIO!D:D<TODAY())*(DIÁRIO!E:E=TRUE)*(DIÁRIO!C:C="Revisão")),\${i+1}),"")\`);
+    hojeSheet.getRange(row, 4).setFormula(\`=IFERROR(TEXT(INDEX(FILTER(DIÁRIO!D:D,(DIÁRIO!D:D<TODAY())*(DIÁRIO!E:E=TRUE)*(DIÁRIO!C:C="Revisão")),\${i+1}),"dd/MM/yyyy"),"")\`);
+    hojeSheet.getRange(row, 5).setFormula(\`=IFERROR(IF(B\${row}="","",IF(COUNTIFS('DATA ENTRY'!B:B,B\${row},'DATA ENTRY'!C:C,"Revisão",'DATA ENTRY'!I:I,TEXT(TODAY(),"dd/MM/yyyy"))>0,TEXT(TODAY(),"dd/MM/yyyy"),"")),"")\`);
+    hojeSheet.getRange(row, 6).setFormula(\`=IF(B\${row}="","",IF(E\${row}<>"","✅ Concluída",TEXT(TODAY()-DATEVALUE(D\${row}),"0")&" dias"))\`);
+
+    // Colorir em vermelho claro
+    hojeSheet.getRange(row, 1, 1, 6).setBackground("#F4CCCC");
+  }
+
+  // === PRÓXIMAS REVISÕES ===
+  hojeSheet.getRange("A50").setValue("📅 PRÓXIMAS REVISÕES (7 DIAS)");
+  hojeSheet.getRange("A50:F50").setBackground("#FBBC04").setFontColor("#FFFFFF").setFontWeight("bold");
+
+  hojeSheet.getRange("A51:F51").setValues([headers]);
+  hojeSheet.getRange("A51:F51").setBackground("#FFD966").setFontWeight("bold").setHorizontalAlignment("center");
+
+  // Adicionar 15 linhas para próximas revisões
+  for (let i = 0; i < 15; i++) {
+    const row = 52 + i;
+
+    hojeSheet.getRange(row, 1).insertCheckboxes();
+    hojeSheet.getRange(row, 2).setFormula(\`=IFERROR(INDEX(FILTER(DIÁRIO!B:B,(DIÁRIO!D:D>TODAY())*(DIÁRIO!D:D<=TODAY()+7)*(DIÁRIO!E:E=TRUE)),\${i+1}),"")\`);
+    hojeSheet.getRange(row, 3).setFormula(\`=IFERROR(INDEX(FILTER(DIÁRIO!C:C,(DIÁRIO!D:D>TODAY())*(DIÁRIO!D:D<=TODAY()+7)*(DIÁRIO!E:E=TRUE)),\${i+1}),"")\`);
+    hojeSheet.getRange(row, 4).setFormula(\`=IFERROR(TEXT(INDEX(FILTER(DIÁRIO!D:D,(DIÁRIO!D:D>TODAY())*(DIÁRIO!D:D<=TODAY()+7)*(DIÁRIO!E:E=TRUE)),\${i+1}),"dd/MM/yyyy"),"")\`);
+    hojeSheet.getRange(row, 5).setValue("");
+    hojeSheet.getRange(row, 6).setFormula(\`=IF(B\${row}="","","Em "&TEXT(DATEVALUE(D\${row})-TODAY(),"0")&" dias")\`);
+
+    // Colorir em amarelo claro
+    hojeSheet.getRange(row, 1, 1, 6).setBackground("#FFF2CC");
+  }
+
+  // Aplicar bordas em toda a planilha
+  hojeSheet.getRange("A1:F67").setBorder(true, true, true, true, true, true);
+
+  // Congelar linhas de cabeçalho
+  hojeSheet.setFrozenRows(1);
 }
 
 // ==========================================
