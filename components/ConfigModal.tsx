@@ -318,7 +318,7 @@ function setupHojeSheet(ss) {
   hojeSheet.getRange(currentRow, 1, 3, 3).setBorder(true, true, true, true, false, false, "#d32f2f", SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
 
   // Adicionar valores abaixo do título
-  hojeSheet.getRange(currentRow + 1, 1).setFormula("=COUNTIFS(DIÁRIO!D:D,'<'&TODAY(),DIÁRIO!E:E,TRUE,DIÁRIO!C:C,'Revisão')");
+  hojeSheet.getRange(currentRow + 1, 1).setFormula("=COUNTIFS(DIÁRIO!D:D,\\"<\\"&TODAY(),DIÁRIO!E:E,TRUE,DIÁRIO!C:C,\\"Revisão\\")");
   hojeSheet.getRange(currentRow + 1, 1).setFontSize(24).setFontWeight("bold").setHorizontalAlignment("center");
   hojeSheet.getRange(currentRow + 2, 1).setValue("revisões atrasadas");
   hojeSheet.getRange(currentRow + 2, 1).setFontSize(9).setHorizontalAlignment("center");
@@ -331,7 +331,7 @@ function setupHojeSheet(ss) {
   hojeSheet.getRange(currentRow, 4, 3, 3).setBorder(true, true, true, true, false, false, "#f57c00", SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
 
   // Adicionar valores abaixo do título
-  hojeSheet.getRange(currentRow + 1, 4).setFormula("=COUNTIFS(DIÁRIO!D:D,'>'&TODAY(),DIÁRIO!D:D,'<='&TODAY()+7,DIÁRIO!E:E,TRUE)");
+  hojeSheet.getRange(currentRow + 1, 4).setFormula("=COUNTIFS(DIÁRIO!D:D,\\">\\"&TODAY(),DIÁRIO!D:D,\\"<=\\"&TODAY()+7,DIÁRIO!E:E,TRUE)");
   hojeSheet.getRange(currentRow + 1, 4).setFontSize(24).setFontWeight("bold").setHorizontalAlignment("center");
   hojeSheet.getRange(currentRow + 2, 4).setValue("revisões próximas");
   hojeSheet.getRange(currentRow + 2, 4).setFontSize(9).setHorizontalAlignment("center");
@@ -422,7 +422,7 @@ function setupHojeSheet(ss) {
 
   // Mensagem quando não há revisões atrasadas
   hojeSheet.getRange(currentRow, 1, 1, 6).merge();
-  hojeSheet.getRange(currentRow, 1).setFormula('=IF(COUNTIFS(DIÁRIO!D:D,\'<\'&TODAY(),DIÁRIO!E:E,TRUE,DIÁRIO!C:C,\'Revisão\')=0,"Parabéns! Nenhuma revisão atrasada.","")');
+  hojeSheet.getRange(currentRow, 1).setFormula("=IF(COUNTIFS(DIÁRIO!D:D,\\"<\\"&TODAY(),DIÁRIO!E:E,TRUE,DIÁRIO!C:C,\\"Revisão\\")=0,\\"Parabéns! Nenhuma revisão atrasada.\\",\\"\\")");
   hojeSheet.getRange(currentRow, 1).setBackground("#e8f5e9").setFontColor("#2e7d32").setFontStyle("italic");
   hojeSheet.getRange(currentRow, 1).setHorizontalAlignment("center").setVerticalAlignment("middle");
   hojeSheet.setRowHeight(currentRow, 40);
@@ -471,7 +471,7 @@ function setupHojeSheet(ss) {
 
   // Mensagem quando não há próximas revisões
   hojeSheet.getRange(currentRow, 1, 1, 6).merge();
-  hojeSheet.getRange(currentRow, 1).setFormula('=IF(COUNTIFS(DIÁRIO!D:D,\'>\'&TODAY(),DIÁRIO!D:D,\'<=\'&TODAY()+7,DIÁRIO!E:E,TRUE)=0,"Nenhuma revisão programada para os próximos 7 dias.","")');
+  hojeSheet.getRange(currentRow, 1).setFormula("=IF(COUNTIFS(DIÁRIO!D:D,\\">\\"&TODAY(),DIÁRIO!D:D,\\"<=\\"&TODAY()+7,DIÁRIO!E:E,TRUE)=0,\\"Nenhuma revisão programada para os próximos 7 dias.\\",\\"\\")");
   hojeSheet.getRange(currentRow, 1).setBackground("#fff3e0").setFontColor("#e65100").setFontStyle("italic");
   hojeSheet.getRange(currentRow, 1).setHorizontalAlignment("center").setVerticalAlignment("middle");
   hojeSheet.setRowHeight(currentRow, 40);
