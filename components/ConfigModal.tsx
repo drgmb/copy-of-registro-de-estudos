@@ -244,10 +244,10 @@ function setupHojeSheet(ss) {
 
   // Linhas de estatísticas
   const stats = [
-    ["Revisões Hoje:", "=COUNTIFS(DIÁRIO!D:D,TODAY(),DIÁRIO!E:E,TRUE)", "Concluídas Hoje:", "=COUNTIFS('DATA ENTRY'!I:I,TEXT(TODAY(),\"dd/MM/yyyy\"),'DATA ENTRY'!C:C,\"Revisão\")", "", ""],
-    ["Revisões Este Mês:", "=COUNTIFS(DIÁRIO!D:D,\">=\"&DATE(YEAR(TODAY()),MONTH(TODAY()),1),DIÁRIO!D:D,\"<=\"&EOMONTH(TODAY(),0),DIÁRIO!E:E,TRUE,DIÁRIO!C:C,\"Revisão\")", "Concluídas Este Mês:", "=COUNTIFS('DATA ENTRY'!I:I,\">=\"&TEXT(DATE(YEAR(TODAY()),MONTH(TODAY()),1),\"dd/MM/yyyy\"),'DATA ENTRY'!I:I,\"<=\"&TEXT(EOMONTH(TODAY(),0),\"dd/MM/yyyy\"),'DATA ENTRY'!C:C,\"Revisão\")", "", ""],
-    ["Total de Revisões:", "=COUNTIFS(DIÁRIO!E:E,TRUE,DIÁRIO!C:C,\"Revisão\")", "Total Concluídas:", "=COUNTA('DATA ENTRY'!A:A)-1", "", ""],
-    ["Atrasadas:", "=COUNTIFS(DIÁRIO!D:D,\"<\"&TODAY(),DIÁRIO!E:E,TRUE,DIÁRIO!C:C,\"Revisão\")", "Próximos 7 Dias:", "=COUNTIFS(DIÁRIO!D:D,\">\"&TODAY(),DIÁRIO!D:D,\"<=\"&TODAY()+7,DIÁRIO!E:E,TRUE)", "", ""]
+    ['Revisões Hoje:', '=COUNTIFS(DIÁRIO!D:D,TODAY(),DIÁRIO!E:E,TRUE)', 'Concluídas Hoje:', '=COUNTIFS(\'DATA ENTRY\'!I:I,TEXT(TODAY(),"dd/MM/yyyy"),\'DATA ENTRY\'!C:C,"Revisão")', '', ''],
+    ['Revisões Este Mês:', '=COUNTIFS(DIÁRIO!D:D,">="&DATE(YEAR(TODAY()),MONTH(TODAY()),1),DIÁRIO!D:D,"<="&EOMONTH(TODAY(),0),DIÁRIO!E:E,TRUE,DIÁRIO!C:C,"Revisão")', 'Concluídas Este Mês:', '=COUNTIFS(\'DATA ENTRY\'!I:I,">="&TEXT(DATE(YEAR(TODAY()),MONTH(TODAY()),1),"dd/MM/yyyy"),\'DATA ENTRY\'!I:I,"<="&TEXT(EOMONTH(TODAY(),0),"dd/MM/yyyy"),\'DATA ENTRY\'!C:C,"Revisão")', '', ''],
+    ['Total de Revisões:', '=COUNTIFS(DIÁRIO!E:E,TRUE,DIÁRIO!C:C,"Revisão")', 'Total Concluídas:', '=COUNTA(\'DATA ENTRY\'!A:A)-1', '', ''],
+    ['Atrasadas:', '=COUNTIFS(DIÁRIO!D:D,"<"&TODAY(),DIÁRIO!E:E,TRUE,DIÁRIO!C:C,"Revisão")', 'Próximos 7 Dias:', '=COUNTIFS(DIÁRIO!D:D,">"&TODAY(),DIÁRIO!D:D,"<="&TODAY()+7,DIÁRIO!E:E,TRUE)', '', '']
   ];
 
   for (let i = 0; i < stats.length; i++) {
