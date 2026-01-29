@@ -244,10 +244,10 @@ function setupHojeSheet(ss) {
 
   // Linhas de estatísticas
   const stats = [
-    ['Revisões Hoje:', '=COUNTIFS(DIÁRIO!D:D,TODAY(),DIÁRIO!E:E,TRUE)', 'Concluídas Hoje:', '=COUNTIFS(\'DATA ENTRY\'!I:I,TEXT(TODAY(),"dd/MM/yyyy"),\'DATA ENTRY\'!C:C,"Revisão")', '', ''],
-    ['Revisões Este Mês:', '=COUNTIFS(DIÁRIO!D:D,">="&DATE(YEAR(TODAY()),MONTH(TODAY()),1),DIÁRIO!D:D,"<="&EOMONTH(TODAY(),0),DIÁRIO!E:E,TRUE,DIÁRIO!C:C,"Revisão")', 'Concluídas Este Mês:', '=COUNTIFS(\'DATA ENTRY\'!I:I,">="&TEXT(DATE(YEAR(TODAY()),MONTH(TODAY()),1),"dd/MM/yyyy"),\'DATA ENTRY\'!I:I,"<="&TEXT(EOMONTH(TODAY(),0),"dd/MM/yyyy"),\'DATA ENTRY\'!C:C,"Revisão")', '', ''],
-    ['Total de Revisões:', '=COUNTIFS(DIÁRIO!E:E,TRUE,DIÁRIO!C:C,"Revisão")', 'Total Concluídas:', '=COUNTA(\'DATA ENTRY\'!A:A)-1', '', ''],
-    ['Atrasadas:', '=COUNTIFS(DIÁRIO!D:D,"<"&TODAY(),DIÁRIO!E:E,TRUE,DIÁRIO!C:C,"Revisão")', 'Próximos 7 Dias:', '=COUNTIFS(DIÁRIO!D:D,">"&TODAY(),DIÁRIO!D:D,"<="&TODAY()+7,DIÁRIO!E:E,TRUE)', '', '']
+    ["Revisões Hoje:", "=COUNTIFS(DIÁRIO!D:D,TODAY(),DIÁRIO!E:E,TRUE)", "Concluídas Hoje:", "=COUNTIFS('DATA ENTRY'!I:I,TEXT(TODAY(),'dd/MM/yyyy'),'DATA ENTRY'!C:C,'Revisão')", "", ""],
+    ["Revisões Este Mês:", "=COUNTIFS(DIÁRIO!D:D,'>='&DATE(YEAR(TODAY()),MONTH(TODAY()),1),DIÁRIO!D:D,'<='&EOMONTH(TODAY(),0),DIÁRIO!E:E,TRUE,DIÁRIO!C:C,'Revisão')", "Concluídas Este Mês:", "=COUNTIFS('DATA ENTRY'!I:I,'>='&TEXT(DATE(YEAR(TODAY()),MONTH(TODAY()),1),'dd/MM/yyyy'),'DATA ENTRY'!I:I,'<='&TEXT(EOMONTH(TODAY(),0),'dd/MM/yyyy'),'DATA ENTRY'!C:C,'Revisão')", "", ""],
+    ["Total de Revisões:", "=COUNTIFS(DIÁRIO!E:E,TRUE,DIÁRIO!C:C,'Revisão')", "Total Concluídas:", "=COUNTA('DATA ENTRY'!A:A)-1", "", ""],
+    ["Atrasadas:", "=COUNTIFS(DIÁRIO!D:D,'<'&TODAY(),DIÁRIO!E:E,TRUE,DIÁRIO!C:C,'Revisão')", "Próximos 7 Dias:", "=COUNTIFS(DIÁRIO!D:D,'>'&TODAY(),DIÁRIO!D:D,'<='&TODAY()+7,DIÁRIO!E:E,TRUE)", "", ""]
   ];
 
   for (let i = 0; i < stats.length; i++) {
@@ -280,15 +280,15 @@ function setupHojeSheet(ss) {
     hojeSheet.getRange(row, 1).insertCheckboxes();
 
     // Fórmulas para buscar dados
-    hojeSheet.getRange(row, 2).setFormula('=IFERROR(INDEX(FILTER(DIÁRIO!B:B,(DIÁRIO!D:D=TODAY())*(DIÁRIO!E:E=TRUE)),' + (i+1) + '),"")');
-    hojeSheet.getRange(row, 3).setFormula('=IFERROR(INDEX(FILTER(DIÁRIO!C:C,(DIÁRIO!D:D=TODAY())*(DIÁRIO!E:E=TRUE)),' + (i+1) + '),"")');
-    hojeSheet.getRange(row, 4).setFormula('=IFERROR(TEXT(INDEX(FILTER(DIÁRIO!D:D,(DIÁRIO!D:D=TODAY())*(DIÁRIO!E:E=TRUE)),' + (i+1) + '),"dd/MM/yyyy"),"")');
+    hojeSheet.getRange(row, 2).setFormula("=IFERROR(INDEX(FILTER(DIÁRIO!B:B,(DIÁRIO!D:D=TODAY())*(DIÁRIO!E:E=TRUE))," + (i+1) + "),'')");
+    hojeSheet.getRange(row, 3).setFormula("=IFERROR(INDEX(FILTER(DIÁRIO!C:C,(DIÁRIO!D:D=TODAY())*(DIÁRIO!E:E=TRUE))," + (i+1) + "),'')");
+    hojeSheet.getRange(row, 4).setFormula("=IFERROR(TEXT(INDEX(FILTER(DIÁRIO!D:D,(DIÁRIO!D:D=TODAY())*(DIÁRIO!E:E=TRUE))," + (i+1) + "),'dd/MM/yyyy'),'')");
 
     // Verificar se foi realizada
-    hojeSheet.getRange(row, 5).setFormula('=IFERROR(IF(B' + row + '="","",IF(COUNTIFS(\'DATA ENTRY\'!B:B,B' + row + ',\'DATA ENTRY\'!C:C,"Revisão",\'DATA ENTRY\'!I:I,TEXT(TODAY(),"dd/MM/yyyy"))>0,TEXT(TODAY(),"dd/MM/yyyy"),"")),"")');
+    hojeSheet.getRange(row, 5).setFormula("=IFERROR(IF(B" + row + "='','',IF(COUNTIFS('DATA ENTRY'!B:B,B" + row + ",'DATA ENTRY'!C:C,'Revisão','DATA ENTRY'!I:I,TEXT(TODAY(),'dd/MM/yyyy'))>0,TEXT(TODAY(),'dd/MM/yyyy'),'')),'')");
 
     // Status
-    hojeSheet.getRange(row, 6).setFormula('=IF(B' + row + '="","",IF(E' + row + '<>"","✅ Concluída","⏳ Pendente"))');
+    hojeSheet.getRange(row, 6).setFormula("=IF(B" + row + "='','',IF(E" + row + "<>'','✅ Concluída','⏳ Pendente'))");
   }
 
   // === REVISÕES ATRASADAS ===
@@ -303,11 +303,11 @@ function setupHojeSheet(ss) {
     const row = 34 + i;
 
     hojeSheet.getRange(row, 1).insertCheckboxes();
-    hojeSheet.getRange(row, 2).setFormula('=IFERROR(INDEX(FILTER(DIÁRIO!B:B,(DIÁRIO!D:D<TODAY())*(DIÁRIO!E:E=TRUE)*(DIÁRIO!C:C="Revisão")),' + (i+1) + '),"")');
-    hojeSheet.getRange(row, 3).setFormula('=IFERROR(INDEX(FILTER(DIÁRIO!C:C,(DIÁRIO!D:D<TODAY())*(DIÁRIO!E:E=TRUE)*(DIÁRIO!C:C="Revisão")),' + (i+1) + '),"")');
-    hojeSheet.getRange(row, 4).setFormula('=IFERROR(TEXT(INDEX(FILTER(DIÁRIO!D:D,(DIÁRIO!D:D<TODAY())*(DIÁRIO!E:E=TRUE)*(DIÁRIO!C:C="Revisão")),' + (i+1) + '),"dd/MM/yyyy"),"")');
-    hojeSheet.getRange(row, 5).setFormula('=IFERROR(IF(B' + row + '="","",IF(COUNTIFS(\'DATA ENTRY\'!B:B,B' + row + ',\'DATA ENTRY\'!C:C,"Revisão",\'DATA ENTRY\'!I:I,TEXT(TODAY(),"dd/MM/yyyy"))>0,TEXT(TODAY(),"dd/MM/yyyy"),"")),"")');
-    hojeSheet.getRange(row, 6).setFormula('=IF(B' + row + '="","",IF(E' + row + '<>"","✅ Concluída",TEXT(TODAY()-DATEVALUE(D' + row + '),"0")&" dias"))');
+    hojeSheet.getRange(row, 2).setFormula("=IFERROR(INDEX(FILTER(DIÁRIO!B:B,(DIÁRIO!D:D<TODAY())*(DIÁRIO!E:E=TRUE)*(DIÁRIO!C:C='Revisão'))," + (i+1) + "),'')");
+    hojeSheet.getRange(row, 3).setFormula("=IFERROR(INDEX(FILTER(DIÁRIO!C:C,(DIÁRIO!D:D<TODAY())*(DIÁRIO!E:E=TRUE)*(DIÁRIO!C:C='Revisão'))," + (i+1) + "),'')");
+    hojeSheet.getRange(row, 4).setFormula("=IFERROR(TEXT(INDEX(FILTER(DIÁRIO!D:D,(DIÁRIO!D:D<TODAY())*(DIÁRIO!E:E=TRUE)*(DIÁRIO!C:C='Revisão'))," + (i+1) + "),'dd/MM/yyyy'),'')");
+    hojeSheet.getRange(row, 5).setFormula("=IFERROR(IF(B" + row + "='','',IF(COUNTIFS('DATA ENTRY'!B:B,B" + row + ",'DATA ENTRY'!C:C,'Revisão','DATA ENTRY'!I:I,TEXT(TODAY(),'dd/MM/yyyy'))>0,TEXT(TODAY(),'dd/MM/yyyy'),'')),'')");
+    hojeSheet.getRange(row, 6).setFormula("=IF(B" + row + "='','',IF(E" + row + "<>'',' ✅ Concluída',TEXT(TODAY()-DATEVALUE(D" + row + "),'0')&' dias'))");
 
     // Colorir em vermelho claro
     hojeSheet.getRange(row, 1, 1, 6).setBackground("#F4CCCC");
@@ -325,11 +325,11 @@ function setupHojeSheet(ss) {
     const row = 52 + i;
 
     hojeSheet.getRange(row, 1).insertCheckboxes();
-    hojeSheet.getRange(row, 2).setFormula('=IFERROR(INDEX(FILTER(DIÁRIO!B:B,(DIÁRIO!D:D>TODAY())*(DIÁRIO!D:D<=TODAY()+7)*(DIÁRIO!E:E=TRUE)),' + (i+1) + '),"")');
-    hojeSheet.getRange(row, 3).setFormula('=IFERROR(INDEX(FILTER(DIÁRIO!C:C,(DIÁRIO!D:D>TODAY())*(DIÁRIO!D:D<=TODAY()+7)*(DIÁRIO!E:E=TRUE)),' + (i+1) + '),"")');
-    hojeSheet.getRange(row, 4).setFormula('=IFERROR(TEXT(INDEX(FILTER(DIÁRIO!D:D,(DIÁRIO!D:D>TODAY())*(DIÁRIO!D:D<=TODAY()+7)*(DIÁRIO!E:E=TRUE)),' + (i+1) + '),"dd/MM/yyyy"),"")');
+    hojeSheet.getRange(row, 2).setFormula("=IFERROR(INDEX(FILTER(DIÁRIO!B:B,(DIÁRIO!D:D>TODAY())*(DIÁRIO!D:D<=TODAY()+7)*(DIÁRIO!E:E=TRUE))," + (i+1) + "),'')");
+    hojeSheet.getRange(row, 3).setFormula("=IFERROR(INDEX(FILTER(DIÁRIO!C:C,(DIÁRIO!D:D>TODAY())*(DIÁRIO!D:D<=TODAY()+7)*(DIÁRIO!E:E=TRUE))," + (i+1) + "),'')");
+    hojeSheet.getRange(row, 4).setFormula("=IFERROR(TEXT(INDEX(FILTER(DIÁRIO!D:D,(DIÁRIO!D:D>TODAY())*(DIÁRIO!D:D<=TODAY()+7)*(DIÁRIO!E:E=TRUE))," + (i+1) + "),'dd/MM/yyyy'),'')");
     hojeSheet.getRange(row, 5).setValue("");
-    hojeSheet.getRange(row, 6).setFormula('=IF(B' + row + '="","","Em "&TEXT(DATEVALUE(D' + row + ')-TODAY(),"0")&" dias")');
+    hojeSheet.getRange(row, 6).setFormula("=IF(B" + row + "='','','Em '&TEXT(DATEVALUE(D" + row + ")-TODAY(),'0')&' dias')");
 
     // Colorir em amarelo claro
     hojeSheet.getRange(row, 1, 1, 6).setBackground("#FFF2CC");
