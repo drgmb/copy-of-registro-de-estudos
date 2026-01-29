@@ -254,7 +254,6 @@ function setupHojeSheet(ss) {
 
   // Card 1: HOJE (simplificado)
   hojeSheet.getRange(currentRow, 1, 3, 3).merge();
-  const card1Text = "HOJE\n\nProgramadas: " + "=COUNTIFS(DIÁRIO!D:D,TODAY(),DIÁRIO!E:E,TRUE)" + "\nConcluídas: " + "=COUNTIFS('DATA ENTRY'!I:I,TEXT(TODAY(),'dd/MM/yyyy'),'DATA ENTRY'!C:C,'Revisão')";
   hojeSheet.getRange(currentRow, 1).setValue("HOJE");
   hojeSheet.getRange(currentRow, 1).setBackground("#e3f2fd").setFontWeight("bold").setVerticalAlignment("middle").setHorizontalAlignment("center");
   hojeSheet.getRange(currentRow, 1).setWrap(true).setFontSize(12);
