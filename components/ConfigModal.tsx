@@ -356,7 +356,7 @@ function setupHojeSheet(ss) {
 
   // Mensagem condicional quando não há revisões
   hojeSheet.getRange(currentRow, 1, 1, 6).merge();
-  hojeSheet.getRange(currentRow, 1).setFormula("=IF(COUNTIFS(DIÁRIO!D:D,TODAY(),DIÁRIO!E:E,TRUE)=0,\"Nenhuma revisão programada para hoje! Aproveite o dia livre ou estude algo novo.\",\"\")");
+  hojeSheet.getRange(currentRow, 1).setFormula('=IF(COUNTIFS(DIÁRIO!D:D,TODAY(),DIÁRIO!E:E,TRUE)=0,"Nenhuma revisão programada para hoje! Aproveite o dia livre ou estude algo novo.","")');
   hojeSheet.getRange(currentRow, 1).setBackground("#f1f3f4").setFontColor("#5f6368").setFontStyle("italic");
   hojeSheet.getRange(currentRow, 1).setHorizontalAlignment("center").setVerticalAlignment("middle").setWrap(true);
   hojeSheet.setRowHeight(currentRow, 50);
@@ -422,7 +422,7 @@ function setupHojeSheet(ss) {
 
   // Mensagem quando não há revisões atrasadas
   hojeSheet.getRange(currentRow, 1, 1, 6).merge();
-  hojeSheet.getRange(currentRow, 1).setFormula("=IF(COUNTIFS(DIÁRIO!D:D,'<'&TODAY(),DIÁRIO!E:E,TRUE,DIÁRIO!C:C,'Revisão')=0,\"Parabéns! Nenhuma revisão atrasada.\",\"\")");
+  hojeSheet.getRange(currentRow, 1).setFormula('=IF(COUNTIFS(DIÁRIO!D:D,"<"&TODAY(),DIÁRIO!E:E,TRUE,DIÁRIO!C:C,"Revisão")=0,"Parabéns! Nenhuma revisão atrasada.","")');
   hojeSheet.getRange(currentRow, 1).setBackground("#e8f5e9").setFontColor("#2e7d32").setFontStyle("italic");
   hojeSheet.getRange(currentRow, 1).setHorizontalAlignment("center").setVerticalAlignment("middle");
   hojeSheet.setRowHeight(currentRow, 40);
@@ -471,7 +471,7 @@ function setupHojeSheet(ss) {
 
   // Mensagem quando não há próximas revisões
   hojeSheet.getRange(currentRow, 1, 1, 6).merge();
-  hojeSheet.getRange(currentRow, 1).setFormula("=IF(COUNTIFS(DIÁRIO!D:D,'>'&TODAY(),DIÁRIO!D:D,'<='&TODAY()+7,DIÁRIO!E:E,TRUE)=0,\"Nenhuma revisão programada para os próximos 7 dias.\",\"\")");
+  hojeSheet.getRange(currentRow, 1).setFormula('=IF(COUNTIFS(DIÁRIO!D:D,">"&TODAY(),DIÁRIO!D:D,"<="&TODAY()+7,DIÁRIO!E:E,TRUE)=0,"Nenhuma revisão programada para os próximos 7 dias.","")');
   hojeSheet.getRange(currentRow, 1).setBackground("#fff3e0").setFontColor("#e65100").setFontStyle("italic");
   hojeSheet.getRange(currentRow, 1).setHorizontalAlignment("center").setVerticalAlignment("middle");
   hojeSheet.setRowHeight(currentRow, 40);
