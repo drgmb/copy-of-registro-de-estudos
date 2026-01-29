@@ -1177,12 +1177,13 @@ function getDiaryData(ss) {
       }
     }
 
-    if (daysDiff === 0) {
+    // Apenas contar REVISÕES, não "Primeiro Contato"
+    if (daysDiff === 0 && diaryData[i][2] === 'Revisão') {
       todayReviews.push(review);
       if (isCompleted) completedToday.push(review);
     } else if (daysDiff < 0 && diaryData[i][2] === 'Revisão') {
       overdue.push(review);
-    } else if (daysDiff > 0 && daysDiff <= 7) {
+    } else if (daysDiff > 0 && daysDiff <= 7 && diaryData[i][2] === 'Revisão') {
       upcoming.push(review);
     }
   }
