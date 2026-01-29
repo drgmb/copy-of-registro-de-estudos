@@ -47,6 +47,14 @@ const DEADLINE_DATE = new Date(new Date().getFullYear(), 9, 15); // 15 de Outubr
 const MIN_INTERVAL = 14; // Intervalo mínimo entre revisões
 
 // ==========================================
+// FUNÇÃO CORS - doGet (Aceita requisições OPTIONS)
+// ==========================================
+function doGet(e) {
+  return ContentService.createTextOutput(JSON.stringify({ 'status': 'ok' }))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+// ==========================================
 // FUNÇÃO PRINCIPAL - doPost
 // ==========================================
 function doPost(e) {
