@@ -70,6 +70,22 @@ function doGet(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
+    if (action === 'getCronograma') {
+      return ContentService.createTextOutput(JSON.stringify(getCronograma(ss)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (action === 'getMetricas') {
+      const periodo = e.parameter.periodo || 'semana';
+      return ContentService.createTextOutput(JSON.stringify(getMetricas(ss, periodo)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (action === 'getListaMestraTemas') {
+      return ContentService.createTextOutput(JSON.stringify(getListaMestraTemas(ss)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
     return ContentService.createTextOutput(JSON.stringify({ 'status': 'ok' }))
       .setMimeType(ContentService.MimeType.JSON);
 
@@ -1258,12 +1274,12 @@ function getDiaryData(ss) {
       daysDiff: daysDiff
     };
 
-    // Check if completed
+    // Check if completed - verificar se existe entrada em DATA ENTRY na data agendada
     let isCompleted = false;
     for (let j = 1; j < dataEntryData.length; j++) {
       if (dataEntryData[j][1] === review.tema &&
           dataEntryData[j][2] === 'Revisão' &&
-          dataEntryData[j][8] === formatDate(hoje)) {
+          dataEntryData[j][8] === review.dataAgendada) {
         isCompleted = true;
         break;
       }
@@ -1454,6 +1470,270 @@ function getDashboardData(ss) {
       totalQuestoesSimulados,
       totalAcertosSimulados
     }
+  };
+}
+
+// ==========================================
+// FUNÇÃO GET CRONOGRAMA
+// ==========================================
+function getCronograma(ss) {
+  const diarySheet = ss.getSheetByName("DIÁRIO");
+  const dataEntrySheet = ss.getSheetByName("DATA ENTRY");
+
+  if (!diarySheet || !dataEntrySheet) {
+    return { status: 'error', message: 'Planilhas não encontradas' };
+  }
+
+  const diaryData = diarySheet.getDataRange().getValues();
+  const dataEntryData = dataEntrySheet.getDataRange().getValues();
+
+  // Map to store themes organized by week
+  const temasPorSemana = {};
+  const temasPorNome = {}; // Track themes to avoid duplicates
+
+  // Collect all "Primeiro Contato" entries from DIÁRIO
+  for (let i = 1; i < diaryData.length; i++) {
+    if (diaryData[i][2] === 'Primeiro Contato') {
+      const tema = diaryData[i][1];
+      const dataPrimeiroContato = new Date(diaryData[i][3]);
+
+      // Calculate week number (simple calculation: week of year)
+      const startOfYear = new Date(dataPrimeiroContato.getFullYear(), 0, 1);
+      const daysDiff = Math.floor((dataPrimeiroContato - startOfYear) / (1000 * 60 * 60 * 24));
+      const semana = Math.ceil((daysDiff + startOfYear.getDay() + 1) / 7);
+
+      // Check if tema was studied (exists in DATA ENTRY with "Primeiro Contato")
+      let status = 'Pendente';
+      let dataEstudo = '';
+
+      for (let j = 1; j < dataEntryData.length; j++) {
+        if (dataEntryData[j][1] === tema && dataEntryData[j][2] === 'Primeiro Contato') {
+          status = 'Estudado';
+          dataEstudo = dataEntryData[j][8]; // DATA_REF
+          break;
+        }
+      }
+
+      // Add tema to week if not already added
+      if (!temasPorNome[tema]) {
+        temasPorNome[tema] = true;
+
+        if (!temasPorSemana[semana]) {
+          temasPorSemana[semana] = [];
+        }
+
+        temasPorSemana[semana].push({
+          tema: tema,
+          status: status,
+          dataEstudo: dataEstudo,
+          semana: semana
+        });
+      }
+    }
+  }
+
+  // Calculate progress: (Y/X) × 100
+  // X = total planned (all Primeiro Contato + all Revisão with status=true in DIÁRIO)
+  // Y = total realized (all entries in DATA ENTRY with Primeiro Contato or Revisão)
+  let totalPrevisto = 0;
+  let totalRealizado = 0;
+
+  // Count all active entries in DIÁRIO
+  for (let i = 1; i < diaryData.length; i++) {
+    if (diaryData[i][4] === true) { // status = true
+      totalPrevisto++;
+    }
+  }
+
+  // Count all completed entries in DATA ENTRY
+  for (let i = 1; i < dataEntryData.length; i++) {
+    totalRealizado++;
+  }
+
+  const percentual = totalPrevisto > 0 ? (totalRealizado / totalPrevisto) * 100 : 0;
+
+  return {
+    status: 'success',
+    data: {
+      temasPorSemana: temasPorSemana,
+      progressoGeral: {
+        totalPrevisto: totalPrevisto,
+        totalRealizado: totalRealizado,
+        percentual: percentual
+      }
+    }
+  };
+}
+
+// ==========================================
+// FUNÇÃO GET METRICAS
+// ==========================================
+function getMetricas(ss, periodo) {
+  const dataEntrySheet = ss.getSheetByName("DATA ENTRY");
+
+  if (!dataEntrySheet) {
+    return { status: 'error', message: 'Planilha DATA ENTRY não encontrada' };
+  }
+
+  const dataEntryData = dataEntrySheet.getDataRange().getValues();
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+
+  // Calculate date range based on period
+  let startDate = new Date(hoje);
+
+  switch (periodo) {
+    case 'dia':
+      // Today only
+      break;
+    case 'semana':
+      // Last 7 days
+      startDate.setDate(hoje.getDate() - 6);
+      break;
+    case 'mes':
+      // Current month
+      startDate = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+      break;
+    case 'trimestre':
+      // Last 3 months
+      startDate.setMonth(hoje.getMonth() - 2);
+      startDate.setDate(1);
+      break;
+    default:
+      startDate.setDate(hoje.getDate() - 6); // Default to week
+  }
+
+  let questoesRealizadas = 0;
+  let acertos = 0;
+  let temasEstudados = 0;
+  let temasRevisados = 0;
+
+  // Process DATA ENTRY within date range
+  for (let i = 1; i < dataEntryData.length; i++) {
+    const dataRef = dataEntryData[i][8]; // DATA_REF
+    const parts = dataRef.split('/');
+    if (parts.length !== 3) continue;
+
+    const entryDate = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+    entryDate.setHours(0, 0, 0, 0);
+
+    // Check if within range
+    if (entryDate >= startDate && entryDate <= hoje) {
+      const detalhes = dataEntryData[i][2]; // DETALHES
+      const isQuestions = dataEntryData[i][5]; // QUESTOES (boolean)
+      const totalQuestions = parseInt(dataEntryData[i][6]) || 0;
+      const correctQuestions = parseInt(dataEntryData[i][7]) || 0;
+
+      if (isQuestions) {
+        questoesRealizadas += totalQuestions;
+        acertos += correctQuestions;
+      }
+
+      if (detalhes === 'Primeiro Contato') {
+        temasEstudados++;
+      } else if (detalhes === 'Revisão') {
+        temasRevisados++;
+      }
+    }
+  }
+
+  return {
+    status: 'success',
+    data: {
+      questoesRealizadas: questoesRealizadas,
+      acertos: acertos,
+      temasEstudados: temasEstudados,
+      temasRevisados: temasRevisados
+    }
+  };
+}
+
+// ==========================================
+// FUNÇÃO GET LISTA MESTRA TEMAS
+// ==========================================
+function getListaMestraTemas(ss) {
+  const diarySheet = ss.getSheetByName("DIÁRIO");
+  const dataEntrySheet = ss.getSheetByName("DATA ENTRY");
+
+  if (!diarySheet || !dataEntrySheet) {
+    return { status: 'error', message: 'Planilhas não encontradas' };
+  }
+
+  const diaryData = diarySheet.getDataRange().getValues();
+  const dataEntryData = dataEntrySheet.getDataRange().getValues();
+
+  const temasMap = {};
+
+  // First pass: collect all themes from DIÁRIO with "Primeiro Contato"
+  for (let i = 1; i < diaryData.length; i++) {
+    if (diaryData[i][2] === 'Primeiro Contato') {
+      const tema = diaryData[i][1];
+      const dataPrimeiroEstudo = formatDate(new Date(diaryData[i][3]));
+
+      if (!temasMap[tema]) {
+        temasMap[tema] = {
+          tema: tema,
+          dataPrimeiroEstudo: dataPrimeiroEstudo,
+          totalQuestoes: 0,
+          totalAcertos: 0,
+          quantidadeRevisoes: 0,
+          revisoes: []
+        };
+      }
+    }
+  }
+
+  // Second pass: gather question data and revision count from DATA ENTRY
+  for (let i = 1; i < dataEntryData.length; i++) {
+    const tema = dataEntryData[i][1];
+    const detalhes = dataEntryData[i][2];
+    const isQuestions = dataEntryData[i][5];
+    const totalQuestions = parseInt(dataEntryData[i][6]) || 0;
+    const correctQuestions = parseInt(dataEntryData[i][7]) || 0;
+    const dataRef = dataEntryData[i][8];
+
+    if (temasMap[tema]) {
+      if (isQuestions) {
+        temasMap[tema].totalQuestoes += totalQuestions;
+        temasMap[tema].totalAcertos += correctQuestions;
+      }
+
+      if (detalhes === 'Revisão') {
+        temasMap[tema].quantidadeRevisoes++;
+
+        // Find corresponding scheduled date in DIÁRIO to check if rescheduled
+        let dataOriginal = '';
+        let remarcada = false;
+
+        for (let j = 1; j < diaryData.length; j++) {
+          if (diaryData[j][1] === tema && diaryData[j][2] === 'Revisão') {
+            const scheduledDate = formatDate(new Date(diaryData[j][3]));
+
+            // Check if this scheduled date matches the actual completion date
+            if (scheduledDate !== dataRef) {
+              // This could be the rescheduled one
+              // For simplicity, we'll mark as rescheduled if dates don't match
+              remarcada = true;
+              dataOriginal = scheduledDate;
+              break;
+            }
+          }
+        }
+
+        temasMap[tema].revisoes.push({
+          data: dataRef,
+          remarcada: remarcada,
+          dataOriginal: remarcada ? dataOriginal : ''
+        });
+      }
+    }
+  }
+
+  const temas = Object.values(temasMap);
+
+  return {
+    status: 'success',
+    data: temas
   };
 }`;
 

@@ -6,9 +6,10 @@ import { CheckCircle2, Circle, AlertCircle, Loader2, BookOpen, ListFilter, BarCh
 interface StudyFormProps {
   onSubmit: (data: StudySession) => void;
   status: AppStatus;
+  preFillTopic?: string;
 }
 
-export const StudyForm: React.FC<StudyFormProps> = ({ onSubmit, status }) => {
+export const StudyForm: React.FC<StudyFormProps> = ({ onSubmit, status, preFillTopic }) => {
   // State
   const [topicName, setTopicName] = useState('');
   const [selectedClass, setSelectedClass] = useState<ClassItem | null>(null);
@@ -46,7 +47,7 @@ export const StudyForm: React.FC<StudyFormProps> = ({ onSubmit, status }) => {
   // Filter topics based on input
   useEffect(() => {
     if (topicName) {
-      const filtered = AVAILABLE_CLASSES.filter(c => 
+      const filtered = AVAILABLE_CLASSES.filter(c =>
         c.name.toLowerCase().includes(topicName.toLowerCase())
       );
       setFilteredClasses(filtered);
@@ -54,6 +55,20 @@ export const StudyForm: React.FC<StudyFormProps> = ({ onSubmit, status }) => {
       setFilteredClasses(AVAILABLE_CLASSES);
     }
   }, [topicName]);
+
+  // Pre-fill form when clicking from HojeView
+  useEffect(() => {
+    if (preFillTopic) {
+      setTopicName(preFillTopic);
+      setDetails('Revisão');
+
+      // Try to find matching class
+      const matchingClass = AVAILABLE_CLASSES.find(c => c.name === preFillTopic);
+      if (matchingClass) {
+        setSelectedClass(matchingClass);
+      }
+    }
+  }, [preFillTopic]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};

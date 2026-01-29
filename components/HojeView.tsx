@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { DiaryData, DiaryReview } from '../types';
+import { CronogramaView } from './CronogramaView';
 import {
   Calendar,
   CheckCircle2,
@@ -16,15 +17,18 @@ import {
   Filter,
   Flame,
   Zap,
-  Check
+  Check,
+  CalendarDays
 } from 'lucide-react';
 
 interface HojeViewProps {
   sheetUrl: string;
+  onReviewClick: (tema: string) => void;
 }
 
 type PeriodFilter = 'hoje' | 'semana' | 'mes' | 'todos';
 type StatusFilter = 'todos' | 'pendentes' | 'completas' | 'atrasadas';
+type HojeSubTab = 'revisoes' | 'cronograma';
 
 const COLOR_MAP: { [key: string]: { bg: string; border: string; text: string; priority: number } } = {
   'Vermelho': { bg: 'bg-red-100', border: 'border-red-400', text: 'text-red-900', priority: 1 },
@@ -34,7 +38,8 @@ const COLOR_MAP: { [key: string]: { bg: string; border: string; text: string; pr
   'default': { bg: 'bg-gray-100', border: 'border-gray-400', text: 'text-gray-900', priority: 2 }
 };
 
-export const HojeView: React.FC<HojeViewProps> = ({ sheetUrl }) => {
+export const HojeView: React.FC<HojeViewProps> = ({ sheetUrl, onReviewClick }) => {
+  const [activeSubTab, setActiveSubTab] = useState<HojeSubTab>('revisoes');
   const [data, setData] = useState<DiaryData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
@@ -194,7 +199,36 @@ export const HojeView: React.FC<HojeViewProps> = ({ sheetUrl }) => {
         </button>
       </div>
 
-      {/* Estatísticas Principais */}
+      {/* Sub-tabs */}
+      <div className="flex gap-2 p-1 bg-gray-100 rounded-lg">
+        <button
+          onClick={() => setActiveSubTab('revisoes')}
+          className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+            activeSubTab === 'revisoes'
+              ? 'bg-white text-green-600 shadow-sm'
+              : 'text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          <CheckCircle2 className="w-4 h-4" />
+          Revisões
+        </button>
+        <button
+          onClick={() => setActiveSubTab('cronograma')}
+          className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
+            activeSubTab === 'cronograma'
+              ? 'bg-white text-blue-600 shadow-sm'
+              : 'text-gray-600 hover:text-gray-900'
+          }`}
+        >
+          <CalendarDays className="w-4 h-4" />
+          Cronograma
+        </button>
+      </div>
+
+      {/* Conteúdo baseado na sub-tab ativa */}
+      {activeSubTab === 'revisoes' ? (
+        <>
+          {/* Estatísticas Principais */}
       <div className="grid grid-cols-2 gap-3">
         {/* Hoje */}
         <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-xl border border-green-200">
@@ -361,10 +395,11 @@ export const HojeView: React.FC<HojeViewProps> = ({ sheetUrl }) => {
               return (
                 <div
                   key={index}
+                  onClick={() => !isCompleted && onReviewClick(review.tema)}
                   className={`flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
                     isCompleted
                       ? 'bg-green-50 border-green-300'
-                      : `${colorStyle.bg} ${colorStyle.border}`
+                      : `${colorStyle.bg} ${colorStyle.border} cursor-pointer hover:shadow-md hover:scale-[1.02]`
                   }`}
                 >
                   <div className="flex-shrink-0">
@@ -414,6 +449,10 @@ export const HojeView: React.FC<HojeViewProps> = ({ sheetUrl }) => {
           </div>
         )}
       </div>
+        </>
+      ) : (
+        <CronogramaView sheetUrl={sheetUrl} />
+      )}
     </div>
   );
 };

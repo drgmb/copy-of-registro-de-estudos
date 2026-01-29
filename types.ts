@@ -102,3 +102,51 @@ export enum AppStatus {
   SUCCESS = 'SUCCESS',
   ERROR = 'ERROR'
 }
+
+// Cronograma
+export interface CronogramaTema {
+  tema: string;
+  status: 'Pendente' | 'Estudado';
+  dataEstudo?: string;
+  semana: number;
+}
+
+export interface CronogramaData {
+  temasPorSemana: { [semana: number]: CronogramaTema[] };
+  progressoGeral: {
+    totalPrevisto: number; // X
+    totalRealizado: number; // Y
+    percentual: number;
+  };
+}
+
+// Visão Geral
+export type PeriodoFilter = 'dia' | 'semana' | 'mes' | 'trimestre';
+
+export interface MetricasPeriodo {
+  questoesRealizadas: number;
+  acertos: number;
+  temasEstudados: number; // primeira vez
+  temasRevisados: number;
+}
+
+export interface VisaoGeralData {
+  metricas: MetricasPeriodo;
+  periodo: PeriodoFilter;
+}
+
+// Lista Mestra de Temas
+export interface RevisaoDetalhe {
+  data: string;
+  remarcada: boolean;
+  dataOriginal?: string;
+}
+
+export interface TemaDetalhado {
+  tema: string;
+  dataPrimeiroEstudo: string;
+  totalQuestoes: number;
+  totalAcertos: number;
+  quantidadeRevisoes: number;
+  revisoes: RevisaoDetalhe[];
+}

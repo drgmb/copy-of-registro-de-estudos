@@ -5,8 +5,9 @@ import { ConfigModal } from './components/ConfigModal';
 import { ChangeLogDisplay } from './components/ChangeLogDisplay';
 import { HojeView } from './components/HojeView';
 import { DashboardView } from './components/DashboardView';
+import { VisaoGeralView } from './components/VisaoGeralView';
 import { StudySession, SimuladoSession, AppStatus, ChangeLogEntry } from './types';
-import { Settings, GraduationCap, AlertCircle, BookOpen, FileText, Calendar, BarChart3 } from 'lucide-react';
+import { Settings, GraduationCap, AlertCircle, BookOpen, FileText, Calendar, BarChart3, Eye } from 'lucide-react';
 
 // Lista exata de arquivos na pasta public/Fotos (47 fotos)
 const PHOTO_FILENAMES = [
@@ -59,7 +60,7 @@ const PHOTO_FILENAMES = [
   "PHOTO-2026-01-28-17-37-20.jpg"
 ];
 
-type TabType = 'temas' | 'simulados' | 'hoje' | 'dashboard';
+type TabType = 'temas' | 'simulados' | 'hoje' | 'dashboard' | 'visao-geral';
 
 const App: React.FC = () => {
   const [status, setStatus] = useState<AppStatus>(AppStatus.IDLE);
@@ -77,6 +78,9 @@ const App: React.FC = () => {
 
   // ChangeLog state
   const [changeLog, setChangeLog] = useState<ChangeLogEntry[]>([]);
+
+  // Pre-fill data for StudyForm (when clicking from HojeView)
+  const [preFillTopic, setPreFillTopic] = useState<string>('');
 
   // Load URL from local storage on mount
   useEffect(() => {
@@ -212,6 +216,13 @@ const App: React.FC = () => {
   const resetForm = () => {
     setStatus(AppStatus.IDLE);
     setChangeLog([]);
+    setPreFillTopic('');
+  };
+
+  const handleReviewClick = (tema: string) => {
+    setPreFillTopic(tema);
+    setActiveTab('temas');
+    resetForm();
   };
 
   return (
@@ -272,6 +283,21 @@ const App: React.FC = () => {
             >
               <BarChart3 className="w-4 h-4" />
               Dashboard
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab('visao-geral');
+                resetForm();
+              }}
+              className={`
+                flex items-center gap-2 px-3 py-3 font-medium text-xs sm:text-sm transition-all border-b-2 whitespace-nowrap
+                ${activeTab === 'visao-geral'
+                  ? 'text-purple-600 border-purple-600'
+                  : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'}
+              `}
+            >
+              <Eye className="w-4 h-4" />
+              Visão Geral
             </button>
             <button
               onClick={() => {
@@ -376,23 +402,26 @@ const App: React.FC = () => {
           ) : (
             <>
               {activeTab === 'hoje' && sheetUrl && (
-                <HojeView sheetUrl={sheetUrl} />
+                <HojeView sheetUrl={sheetUrl} onReviewClick={handleReviewClick} />
               )}
               {activeTab === 'dashboard' && sheetUrl && (
                 <DashboardView sheetUrl={sheetUrl} />
               )}
+              {activeTab === 'visao-geral' && sheetUrl && (
+                <VisaoGeralView sheetUrl={sheetUrl} />
+              )}
               {activeTab === 'temas' && (
-                <StudyForm onSubmit={handleSubmit} status={status} />
+                <StudyForm onSubmit={handleSubmit} status={status} preFillTopic={preFillTopic} />
               )}
               {activeTab === 'simulados' && (
                 <SimuladosForm onSubmit={handleSubmit} status={status} />
               )}
-              {(activeTab === 'hoje' || activeTab === 'dashboard') && !sheetUrl && (
+              {(activeTab === 'hoje' || activeTab === 'dashboard' || activeTab === 'visao-geral') && !sheetUrl && (
                 <div className="text-center py-12">
                   <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
                   <h3 className="text-lg font-bold text-gray-800 mb-2">Configure sua planilha</h3>
                   <p className="text-gray-600 text-sm mb-4">
-                    Para visualizar {activeTab === 'hoje' ? 'as revisões de hoje' : 'o dashboard'}, você precisa configurar a URL da planilha Google.
+                    Para visualizar {activeTab === 'hoje' ? 'as revisões de hoje' : activeTab === 'visao-geral' ? 'a visão geral' : 'o dashboard'}, você precisa configurar a URL da planilha Google.
                   </p>
                   <button
                     onClick={() => setIsConfigOpen(true)}
