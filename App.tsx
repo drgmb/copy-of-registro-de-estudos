@@ -2,67 +2,71 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { StudyForm } from './components/StudyForm';
 import { ConfigModal } from './components/ConfigModal';
 import { StudySession, AppStatus } from './types';
-import { Settings, GraduationCap } from 'lucide-react';
+import { Settings, GraduationCap, AlertCircle } from 'lucide-react';
 
-// Lista exata de arquivos na pasta Fotos
+// Lista exata de arquivos na pasta public/Fotos (47 fotos)
 const PHOTO_FILENAMES = [
-  "PHOTO-2026-01-28-17-37-20.jpg",
-  "PHOTO-2026-01-28-17-21-00.jpg",
-  "PHOTO-2026-01-28-07-02-56.jpg",
-  "PHOTO-2026-01-27-23-09-04.jpg",
-  "PHOTO-2026-01-27-23-08-20.jpg",
-  "PHOTO-2026-01-27-07-35-46.jpg",
-  "PHOTO-2026-01-26-11-11-56.jpg",
-  "PHOTO-2026-01-25-10-51-35.jpg",
-  "PHOTO-2026-01-25-09-44-44.jpg",
-  "PHOTO-2026-01-18-19-13-14.jpg",
-  "PHOTO-2026-01-18-16-53-40.jpg",
-  "PHOTO-2026-01-18-08-58-17.jpg",
-  "PHOTO-2026-01-17-16-53-02.jpg",
-  "PHOTO-2026-01-16-15-50-33.jpg",
-  "PHOTO-2026-01-16-09-29-32.jpg",
-  "PHOTO-2026-01-11-10-50-47.jpg",
-  "PHOTO-2026-01-11-10-50-47 2.jpg",
-  "PHOTO-2026-01-11-10-50-46.jpg",
-  "PHOTO-2026-01-11-10-50-46 3.jpg",
-  "PHOTO-2026-01-11-10-50-46 2.jpg",
-  "PHOTO-2026-01-11-10-50-45.jpg",
-  "PHOTO-2026-01-11-10-50-45 2.jpg",
-  "PHOTO-2025-12-29-13-54-39.jpg",
-  "PHOTO-2025-12-23-08-55-28.jpg",
-  "PHOTO-2025-12-18-13-07-17.jpg",
-  "PHOTO-2025-12-18-09-45-10.jpg",
-  "PHOTO-2025-12-17-11-07-34.jpg",
-  "PHOTO-2025-12-17-07-14-41.jpg",
-  "PHOTO-2025-12-16-11-18-37.jpg",
-  "PHOTO-2025-12-16-06-45-21.jpg",
-  "PHOTO-2025-12-11-10-28-40.jpg",
-  "PHOTO-2025-12-11-07-48-45.jpg",
-  "PHOTO-2025-12-09-09-24-35.jpg",
-  "PHOTO-2025-12-09-06-52-27.jpg",
-  "PHOTO-2025-12-05-12-17-39.jpg",
-  "PHOTO-2025-12-05-08-00-01.jpg",
-  "PHOTO-2025-12-04-14-24-50.jpg",
-  "PHOTO-2025-12-02-15-00-03.jpg",
-  "PHOTO-2025-12-01-14-25-24.jpg",
-  "PHOTO-2025-11-28-19-53-21.jpg",
-  "PHOTO-2025-11-28-09-36-55.jpg",
-  "PHOTO-2025-11-25-18-03-28.jpg",
-  "PHOTO-2025-11-24-14-48-04.jpg",
-  "PHOTO-2025-11-21-11-12-39.jpg",
-  "PHOTO-2025-11-18-13-21-25.jpg",
+  "PHOTO-2025-11-14-12-04-55.jpg",
   "PHOTO-2025-11-18-07-19-35.jpg",
-  "PHOTO-2025-11-14-12-04-55.jpg"
+  "PHOTO-2025-11-18-13-21-25.jpg",
+  "PHOTO-2025-11-21-11-12-39.jpg",
+  "PHOTO-2025-11-24-14-48-04.jpg",
+  "PHOTO-2025-11-25-18-03-28.jpg",
+  "PHOTO-2025-11-28-09-36-55.jpg",
+  "PHOTO-2025-11-28-19-53-21.jpg",
+  "PHOTO-2025-12-01-14-25-24.jpg",
+  "PHOTO-2025-12-02-15-00-03.jpg",
+  "PHOTO-2025-12-04-14-24-50.jpg",
+  "PHOTO-2025-12-05-08-00-01.jpg",
+  "PHOTO-2025-12-05-12-17-39.jpg",
+  "PHOTO-2025-12-09-06-52-27.jpg",
+  "PHOTO-2025-12-09-09-24-35.jpg",
+  "PHOTO-2025-12-11-07-48-45.jpg",
+  "PHOTO-2025-12-11-10-28-40.jpg",
+  "PHOTO-2025-12-16-06-45-21.jpg",
+  "PHOTO-2025-12-16-11-18-37.jpg",
+  "PHOTO-2025-12-17-07-14-41.jpg",
+  "PHOTO-2025-12-17-11-07-34.jpg",
+  "PHOTO-2025-12-18-09-45-10.jpg",
+  "PHOTO-2025-12-18-13-07-17.jpg",
+  "PHOTO-2025-12-23-08-55-28.jpg",
+  "PHOTO-2025-12-29-13-54-39.jpg",
+  "PHOTO-2026-01-11-10-50-45 2.jpg",
+  "PHOTO-2026-01-11-10-50-45.jpg",
+  "PHOTO-2026-01-11-10-50-46 2.jpg",
+  "PHOTO-2026-01-11-10-50-46 3.jpg",
+  "PHOTO-2026-01-11-10-50-46.jpg",
+  "PHOTO-2026-01-11-10-50-47 2.jpg",
+  "PHOTO-2026-01-11-10-50-47.jpg",
+  "PHOTO-2026-01-16-09-29-32.jpg",
+  "PHOTO-2026-01-16-15-50-33.jpg",
+  "PHOTO-2026-01-17-16-53-02.jpg",
+  "PHOTO-2026-01-18-08-58-17.jpg",
+  "PHOTO-2026-01-18-16-53-40.jpg",
+  "PHOTO-2026-01-18-19-13-14.jpg",
+  "PHOTO-2026-01-25-09-44-44.jpg",
+  "PHOTO-2026-01-25-10-51-35.jpg",
+  "PHOTO-2026-01-26-11-11-56.jpg",
+  "PHOTO-2026-01-27-07-35-46.jpg",
+  "PHOTO-2026-01-27-23-08-20.jpg",
+  "PHOTO-2026-01-27-23-09-04.jpg",
+  "PHOTO-2026-01-28-07-02-56.jpg",
+  "PHOTO-2026-01-28-17-21-00.jpg",
+  "PHOTO-2026-01-28-17-37-20.jpg"
 ];
 
 const App: React.FC = () => {
   const [status, setStatus] = useState<AppStatus>(AppStatus.IDLE);
   const [sheetUrl, setSheetUrl] = useState<string>('');
   const [isConfigOpen, setIsConfigOpen] = useState(false);
-  
+
   // State to manage the active image source and fallback status
   const [currentImageSrc, setCurrentImageSrc] = useState<string>('');
   const [isFallbackImage, setIsFallbackImage] = useState(false);
+
+  // Error states
+  const [errorMessage, setErrorMessage] = useState<string>('');
+  const [errorCode, setErrorCode] = useState<string>('');
 
   // Load URL from local storage on mount
   useEffect(() => {
@@ -86,10 +90,10 @@ const App: React.FC = () => {
     // Pick random filename
     const randomFileName = PHOTO_FILENAMES[Math.floor(Math.random() * PHOTO_FILENAMES.length)];
     
-    // Construct local path. Using ./ ensures explicit relative path.
+    // Construct path with URL encoding for spaces
     const encodedFileName = randomFileName.replace(/ /g, '%20');
-    // NOTE: For GitHub Pages or standard hosting, this expects a 'Fotos' folder in the public root.
-    const imagePath = `./Fotos/${encodedFileName}`;
+    // Use absolute path - Vite copies /public/ to /dist/ automatically
+    const imagePath = `/Fotos/${encodedFileName}`;
 
     return { nickname, imagePath };
   }, [status]);
@@ -122,24 +126,38 @@ const App: React.FC = () => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-      await fetch(sheetUrl, {
+      const response = await fetch(sheetUrl, {
         method: 'POST',
-        mode: 'no-cors', 
         headers: {
-          'Content-Type': 'text/plain',
+          'Content-Type': 'application/json',
         },
         body: JSON.stringify(data),
         signal: controller.signal
       });
 
       clearTimeout(timeoutId);
-      setStatus(AppStatus.SUCCESS);
+
+      // Ler resposta JSON
+      const result = await response.json();
+
+      if (result.status === 'error') {
+        console.error("Backend error:", result);
+        setErrorMessage(result.message || 'Erro ao salvar.');
+        setErrorCode(result.code || 'UNKNOWN_ERROR');
+        setStatus(AppStatus.ERROR);
+      } else {
+        setStatus(AppStatus.SUCCESS);
+      }
     } catch (error: any) {
       if (error.name === 'AbortError') {
-         console.warn("Request timed out - assuming success for UX");
-         setStatus(AppStatus.SUCCESS);
+        console.warn("Request timed out");
+        setErrorMessage('Tempo esgotado. Tente novamente.');
+        setErrorCode('TIMEOUT');
+        setStatus(AppStatus.ERROR);
       } else {
         console.error("Error submitting data:", error);
+        setErrorMessage('Erro de conexão. Verifique sua internet.');
+        setErrorCode('NETWORK_ERROR');
         setStatus(AppStatus.ERROR);
       }
     }
@@ -238,10 +256,24 @@ const App: React.FC = () => {
           )}
 
           {status === AppStatus.ERROR && (
-             <div className="mt-4 p-4 bg-red-50 text-red-700 rounded-lg text-sm text-center">
-               Erro ao salvar. Verifique o Script da Planilha.
-               <button onClick={() => setStatus(AppStatus.IDLE)} className="block w-full mt-2 font-bold underline">Tentar novamente</button>
-             </div>
+            <div className="mt-4 p-4 bg-red-50 text-red-700 rounded-lg text-sm">
+              <div className="flex items-center gap-2 mb-2">
+                <AlertCircle className="w-5 h-5" />
+                <strong>Erro ao salvar</strong>
+              </div>
+              <p>{errorMessage}</p>
+              {errorCode === 'DUPLICATE_FIRST_ENTRY' && (
+                <p className="mt-2 text-xs bg-red-100 p-2 rounded border border-red-200">
+                  💡 <strong>Dica:</strong> Mude "Detalhes" para "Revisão" e tente novamente.
+                </p>
+              )}
+              <button
+                onClick={() => setStatus(AppStatus.IDLE)}
+                className="mt-3 w-full py-2 bg-red-600 text-white rounded-lg font-bold hover:bg-red-700 transition-colors"
+              >
+                Tentar Novamente
+              </button>
+            </div>
           )}
         </div>
       </div>

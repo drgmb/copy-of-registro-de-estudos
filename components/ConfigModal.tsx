@@ -58,6 +58,16 @@ function doPost(e) {
     setupSheets(ss);
 
     const data = JSON.parse(e.postData.contents);
+
+    // VALIDAR DUPLICATA ANTES DE SALVAR
+    if (isDuplicateFirstEntry(ss, data)) {
+      return ContentService.createTextOutput(JSON.stringify({
+        'status': 'error',
+        'code': 'DUPLICATE_FIRST_ENTRY',
+        'message': 'Este tema já possui uma "Primeira Entrada". Para registrar novamente, selecione "Revisão" nos detalhes.'
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
+
     const entrySheet = ss.getSheetByName("DATA ENTRY");
 
     // 1. REGISTRAR NO DATA ENTRY
@@ -81,8 +91,11 @@ function doPost(e) {
       .setMimeType(ContentService.MimeType.JSON);
 
   } catch (err) {
-    return ContentService.createTextOutput(JSON.stringify({ 'status': 'error', 'message': err.toString() }))
-      .setMimeType(ContentService.MimeType.JSON);
+    return ContentService.createTextOutput(JSON.stringify({
+      'status': 'error',
+      'code': 'SERVER_ERROR',
+      'message': err.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
   } finally {
     lock.releaseLock();
   }
@@ -133,6 +146,28 @@ function countCompletedReviews(ss, data) {
     }
   }
   return count;
+}
+
+function isDuplicateFirstEntry(ss, data) {
+  const diarySheet = ss.getSheetByName("DIÁRIO");
+  const diaryData = diarySheet.getDataRange().getValues();
+
+  // Se não é "Primeiro Contato", permitir
+  if (data.details !== "Primeiro Contato") {
+    return false;
+  }
+
+  // Buscar se tema já existe no DIÁRIO
+  for (let i = 1; i < diaryData.length; i++) {
+    const matchesId = data.topicId && diaryData[i][0] == data.topicId;
+    const matchesName = diaryData[i][1] == data.topic;
+
+    if (matchesId || matchesName) {
+      return true; // Tema já registrado - É DUPLICATA
+    }
+  }
+
+  return false; // Não é duplicata
 }
 
 // ==========================================
