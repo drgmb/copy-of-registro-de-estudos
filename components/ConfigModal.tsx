@@ -90,7 +90,18 @@ function doPost(e) {
 
   try {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
-    setupSheets(ss);
+
+    // Setup sheets com tratamento de erro
+    try {
+      setupSheets(ss);
+    } catch (setupError) {
+      Logger.log('Erro no setupSheets: ' + setupError.toString());
+      return ContentService.createTextOutput(JSON.stringify({
+        'status': 'error',
+        'code': 'SETUP_ERROR',
+        'message': 'Erro ao configurar planilhas: ' + setupError.toString()
+      })).setMimeType(ContentService.MimeType.JSON);
+    }
 
     const type = e.parameter.type || 'study';
 
@@ -229,8 +240,8 @@ function setupSheets(ss) {
     ]);
   }
 
-  // Criar ou atualizar aba HOJE
-  setupHojeSheet(ss);
+  // Nota: A aba HOJE não é mais criada automaticamente.
+  // Se precisar da aba HOJE na planilha, chame setupHojeSheet() manualmente.
 }
 
 // ==========================================
