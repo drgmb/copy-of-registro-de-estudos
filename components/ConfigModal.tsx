@@ -238,7 +238,7 @@ function setupHojeSheet(ss) {
   hojeSheet.getRange("A1:F2").merge();
   const hoje = new Date();
   const diaSemana = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"][hoje.getDay()];
-  hojeSheet.getRange("A1").setFormula("=CHAR(127919)&\" DASHBOARD DE REVISÕES\"&CHAR(10)&\"" + diaSemana + ", " + formatDate(hoje) + "\"");
+  hojeSheet.getRange("A1").setValue("DASHBOARD DE REVISÕES\n" + diaSemana + ", " + formatDate(hoje));
   hojeSheet.getRange("A1").setFontSize(18).setFontWeight("bold").setHorizontalAlignment("center").setVerticalAlignment("middle");
   hojeSheet.getRange("A1").setBackground("#1a73e8").setFontColor("#FFFFFF");
   hojeSheet.getRange("A1").setWrap(true);
@@ -252,19 +252,33 @@ function setupHojeSheet(ss) {
   hojeSheet.setRowHeight(currentRow, 15);
   currentRow++;
 
-  // Card 1: HOJE
+  // Card 1: HOJE (simplificado)
   hojeSheet.getRange(currentRow, 1, 3, 3).merge();
-  hojeSheet.getRange(currentRow, 1).setFormula("=CHAR(128197)&\" HOJE\"&CHAR(10)&CHAR(10)&COUNTIFS(DIÁRIO!D:D,TODAY(),DIÁRIO!E:E,TRUE)&\" revisões programadas\"&CHAR(10)&COUNTIFS('DATA ENTRY'!I:I,TEXT(TODAY(),'dd/MM/yyyy'),'DATA ENTRY'!C:C,'Revisão')&\" concluídas\"");
+  const card1Text = "HOJE\n\nProgramadas: " + "=COUNTIFS(DIÁRIO!D:D,TODAY(),DIÁRIO!E:E,TRUE)" + "\nConcluídas: " + "=COUNTIFS('DATA ENTRY'!I:I,TEXT(TODAY(),'dd/MM/yyyy'),'DATA ENTRY'!C:C,'Revisão')";
+  hojeSheet.getRange(currentRow, 1).setValue("HOJE");
   hojeSheet.getRange(currentRow, 1).setBackground("#e3f2fd").setFontWeight("bold").setVerticalAlignment("middle").setHorizontalAlignment("center");
-  hojeSheet.getRange(currentRow, 1).setWrap(true).setFontSize(11);
+  hojeSheet.getRange(currentRow, 1).setWrap(true).setFontSize(12);
   hojeSheet.getRange(currentRow, 1, 3, 3).setBorder(true, true, true, true, false, false, "#1976d2", SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
 
-  // Card 2: ESTE MÊS
+  // Adicionar valores abaixo do título
+  hojeSheet.getRange(currentRow + 1, 1).setFormula("=COUNTIFS(DIÁRIO!D:D,TODAY(),DIÁRIO!E:E,TRUE)");
+  hojeSheet.getRange(currentRow + 1, 1).setFontSize(24).setFontWeight("bold").setHorizontalAlignment("center");
+  hojeSheet.getRange(currentRow + 2, 1).setValue("revisões hoje");
+  hojeSheet.getRange(currentRow + 2, 1).setFontSize(9).setHorizontalAlignment("center");
+
+  // Card 2: ESTE MÊS (simplificado)
   hojeSheet.getRange(currentRow, 4, 3, 3).merge();
-  hojeSheet.getRange(currentRow, 4).setFormula("=CHAR(128202)&\" ESTE MÊS\"&CHAR(10)&CHAR(10)&COUNTIFS('DATA ENTRY'!I:I,'>='&TEXT(DATE(YEAR(TODAY()),MONTH(TODAY()),1),'dd/MM/yyyy'),'DATA ENTRY'!I:I,'<='&TEXT(EOMONTH(TODAY(),0),'dd/MM/yyyy'),'DATA ENTRY'!C:C,'Revisão')&\" revisões\"");
+  hojeSheet.getRange(currentRow, 4).setValue("ESTE MÊS");
   hojeSheet.getRange(currentRow, 4).setBackground("#e8f5e9").setFontWeight("bold").setVerticalAlignment("middle").setHorizontalAlignment("center");
-  hojeSheet.getRange(currentRow, 4).setWrap(true).setFontSize(11);
+  hojeSheet.getRange(currentRow, 4).setWrap(true).setFontSize(12);
   hojeSheet.getRange(currentRow, 4, 3, 3).setBorder(true, true, true, true, false, false, "#388e3c", SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
+
+  // Adicionar valores abaixo do título
+  const mesFormula = "=COUNTIFS('DATA ENTRY'!C:C,'Revisão','DATA ENTRY'!I:I,'>='&TEXT(DATE(YEAR(TODAY()),MONTH(TODAY()),1),'dd/MM/yyyy'),'DATA ENTRY'!I:I,'<='&TEXT(EOMONTH(TODAY(),0),'dd/MM/yyyy'))";
+  hojeSheet.getRange(currentRow + 1, 4).setFormula(mesFormula);
+  hojeSheet.getRange(currentRow + 1, 4).setFontSize(24).setFontWeight("bold").setHorizontalAlignment("center");
+  hojeSheet.getRange(currentRow + 2, 4).setValue("revisões este mês");
+  hojeSheet.getRange(currentRow + 2, 4).setFontSize(9).setHorizontalAlignment("center");
 
   hojeSheet.setRowHeight(currentRow, 30);
   hojeSheet.setRowHeight(currentRow + 1, 30);
@@ -275,19 +289,31 @@ function setupHojeSheet(ss) {
   hojeSheet.setRowHeight(currentRow, 10);
   currentRow++;
 
-  // Card 3: ATRASADAS
+  // Card 3: ATRASADAS (simplificado)
   hojeSheet.getRange(currentRow, 1, 3, 3).merge();
-  hojeSheet.getRange(currentRow, 1).setFormula("=CHAR(9888)&\" ATRASADAS\"&CHAR(10)&CHAR(10)&COUNTIFS(DIÁRIO!D:D,'<'&TODAY(),DIÁRIO!E:E,TRUE,DIÁRIO!C:C,'Revisão')&\" revisões\"");
+  hojeSheet.getRange(currentRow, 1).setValue("ATRASADAS");
   hojeSheet.getRange(currentRow, 1).setBackground("#ffebee").setFontWeight("bold").setVerticalAlignment("middle").setHorizontalAlignment("center");
-  hojeSheet.getRange(currentRow, 1).setWrap(true).setFontSize(11);
+  hojeSheet.getRange(currentRow, 1).setWrap(true).setFontSize(12);
   hojeSheet.getRange(currentRow, 1, 3, 3).setBorder(true, true, true, true, false, false, "#d32f2f", SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
 
-  // Card 4: PRÓXIMOS 7 DIAS
+  // Adicionar valores abaixo do título
+  hojeSheet.getRange(currentRow + 1, 1).setFormula("=COUNTIFS(DIÁRIO!D:D,'<'&TODAY(),DIÁRIO!E:E,TRUE,DIÁRIO!C:C,'Revisão')");
+  hojeSheet.getRange(currentRow + 1, 1).setFontSize(24).setFontWeight("bold").setHorizontalAlignment("center");
+  hojeSheet.getRange(currentRow + 2, 1).setValue("revisões atrasadas");
+  hojeSheet.getRange(currentRow + 2, 1).setFontSize(9).setHorizontalAlignment("center");
+
+  // Card 4: PRÓXIMOS 7 DIAS (simplificado)
   hojeSheet.getRange(currentRow, 4, 3, 3).merge();
-  hojeSheet.getRange(currentRow, 4).setFormula("=CHAR(128198)&\" PRÓXIMOS 7 DIAS\"&CHAR(10)&CHAR(10)&COUNTIFS(DIÁRIO!D:D,'>'&TODAY(),DIÁRIO!D:D,'<='&TODAY()+7,DIÁRIO!E:E,TRUE)&\" revisões\"");
+  hojeSheet.getRange(currentRow, 4).setValue("PRÓXIMOS 7 DIAS");
   hojeSheet.getRange(currentRow, 4).setBackground("#fff3e0").setFontWeight("bold").setVerticalAlignment("middle").setHorizontalAlignment("center");
-  hojeSheet.getRange(currentRow, 4).setWrap(true).setFontSize(11);
+  hojeSheet.getRange(currentRow, 4).setWrap(true).setFontSize(12);
   hojeSheet.getRange(currentRow, 4, 3, 3).setBorder(true, true, true, true, false, false, "#f57c00", SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
+
+  // Adicionar valores abaixo do título
+  hojeSheet.getRange(currentRow + 1, 4).setFormula("=COUNTIFS(DIÁRIO!D:D,'>'&TODAY(),DIÁRIO!D:D,'<='&TODAY()+7,DIÁRIO!E:E,TRUE)");
+  hojeSheet.getRange(currentRow + 1, 4).setFontSize(24).setFontWeight("bold").setHorizontalAlignment("center");
+  hojeSheet.getRange(currentRow + 2, 4).setValue("revisões próximas");
+  hojeSheet.getRange(currentRow + 2, 4).setFontSize(9).setHorizontalAlignment("center");
 
   hojeSheet.setRowHeight(currentRow, 30);
   hojeSheet.setRowHeight(currentRow + 1, 30);
@@ -309,7 +335,7 @@ function setupHojeSheet(ss) {
 
   // Mensagem condicional quando não há revisões
   hojeSheet.getRange(currentRow, 1, 1, 6).merge();
-  hojeSheet.getRange(currentRow, 1).setFormula("=IF(COUNTIFS(DIÁRIO!D:D,TODAY(),DIÁRIO!E:E,TRUE)=0,CHAR(127881)&\" Nenhuma revisão programada para hoje! Aproveite o dia livre ou estude algo novo.\",\"\")");
+  hojeSheet.getRange(currentRow, 1).setFormula("=IF(COUNTIFS(DIÁRIO!D:D,TODAY(),DIÁRIO!E:E,TRUE)=0,\"Nenhuma revisão programada para hoje! Aproveite o dia livre ou estude algo novo.\",\"\")");
   hojeSheet.getRange(currentRow, 1).setBackground("#f1f3f4").setFontColor("#5f6368").setFontStyle("italic");
   hojeSheet.getRange(currentRow, 1).setHorizontalAlignment("center").setVerticalAlignment("middle").setWrap(true);
   hojeSheet.setRowHeight(currentRow, 50);
@@ -375,7 +401,7 @@ function setupHojeSheet(ss) {
 
   // Mensagem quando não há revisões atrasadas
   hojeSheet.getRange(currentRow, 1, 1, 6).merge();
-  hojeSheet.getRange(currentRow, 1).setFormula("=IF(COUNTIFS(DIÁRIO!D:D,'<'&TODAY(),DIÁRIO!E:E,TRUE,DIÁRIO!C:C,'Revisão')=0,CHAR(10024)&\" Parabéns! Nenhuma revisão atrasada.\",\"\")");
+  hojeSheet.getRange(currentRow, 1).setFormula("=IF(COUNTIFS(DIÁRIO!D:D,'<'&TODAY(),DIÁRIO!E:E,TRUE,DIÁRIO!C:C,'Revisão')=0,\"Parabéns! Nenhuma revisão atrasada.\",\"\")");
   hojeSheet.getRange(currentRow, 1).setBackground("#e8f5e9").setFontColor("#2e7d32").setFontStyle("italic");
   hojeSheet.getRange(currentRow, 1).setHorizontalAlignment("center").setVerticalAlignment("middle");
   hojeSheet.setRowHeight(currentRow, 40);
@@ -424,7 +450,7 @@ function setupHojeSheet(ss) {
 
   // Mensagem quando não há próximas revisões
   hojeSheet.getRange(currentRow, 1, 1, 6).merge();
-  hojeSheet.getRange(currentRow, 1).setFormula("=IF(COUNTIFS(DIÁRIO!D:D,'>'&TODAY(),DIÁRIO!D:D,'<='&TODAY()+7,DIÁRIO!E:E,TRUE)=0,CHAR(128237)&\" Nenhuma revisão programada para os próximos 7 dias.\",\"\")");
+  hojeSheet.getRange(currentRow, 1).setFormula("=IF(COUNTIFS(DIÁRIO!D:D,'>'&TODAY(),DIÁRIO!D:D,'<='&TODAY()+7,DIÁRIO!E:E,TRUE)=0,\"Nenhuma revisão programada para os próximos 7 dias.\",\"\")");
   hojeSheet.getRange(currentRow, 1).setBackground("#fff3e0").setFontColor("#e65100").setFontStyle("italic");
   hojeSheet.getRange(currentRow, 1).setHorizontalAlignment("center").setVerticalAlignment("middle");
   hojeSheet.setRowHeight(currentRow, 40);
@@ -464,7 +490,7 @@ function setupHojeSheet(ss) {
   currentRow++;
 
   hojeSheet.getRange(currentRow, 1, 1, 6).merge();
-  hojeSheet.getRange(currentRow, 1).setFormula("=CHAR(129302)&\" Dashboard atualizado automaticamente | Última visualização: " + formatDate(new Date()) + "\"");
+  hojeSheet.getRange(currentRow, 1).setValue("Dashboard atualizado automaticamente | Última visualização: " + formatDate(new Date()));
   hojeSheet.getRange(currentRow, 1).setBackground("#37474f").setFontColor("#ffffff");
   hojeSheet.getRange(currentRow, 1).setHorizontalAlignment("center").setVerticalAlignment("middle").setFontSize(9);
   hojeSheet.setRowHeight(currentRow, 30);
