@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { StudyForm } from './components/StudyForm';
+import { SimuladosForm } from './components/SimuladosForm';
 import { ConfigModal } from './components/ConfigModal';
-import { StudySession, AppStatus } from './types';
-import { Settings, GraduationCap, AlertCircle } from 'lucide-react';
+import { ChangeLogDisplay } from './components/ChangeLogDisplay';
+import { StudySession, SimuladoSession, AppStatus, ChangeLogEntry } from './types';
+import { Settings, GraduationCap, AlertCircle, BookOpen, FileText } from 'lucide-react';
 
 // Lista exata de arquivos na pasta public/Fotos (47 fotos)
 const PHOTO_FILENAMES = [
@@ -55,10 +57,13 @@ const PHOTO_FILENAMES = [
   "PHOTO-2026-01-28-17-37-20.jpg"
 ];
 
+type TabType = 'temas' | 'simulados';
+
 const App: React.FC = () => {
   const [status, setStatus] = useState<AppStatus>(AppStatus.IDLE);
   const [sheetUrl, setSheetUrl] = useState<string>('');
   const [isConfigOpen, setIsConfigOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabType>('temas');
 
   // State to manage the active image source and fallback status
   const [currentImageSrc, setCurrentImageSrc] = useState<string>('');
@@ -67,6 +72,9 @@ const App: React.FC = () => {
   // Error states
   const [errorMessage, setErrorMessage] = useState<string>('');
   const [errorCode, setErrorCode] = useState<string>('');
+
+  // ChangeLog state
+  const [changeLog, setChangeLog] = useState<ChangeLogEntry[]>([]);
 
   // Load URL from local storage on mount
   useEffect(() => {
@@ -111,7 +119,7 @@ const App: React.FC = () => {
     localStorage.setItem('googleSheetScriptUrl', url);
   };
 
-  const handleSubmit = async (data: StudySession) => {
+  const handleSubmit = async (data: StudySession | SimuladoSession) => {
     setStatus(AppStatus.SUBMITTING);
 
     if (!sheetUrl) {
@@ -128,15 +136,38 @@ const App: React.FC = () => {
 
       // Usar URLSearchParams para evitar preflight CORS
       const formData = new URLSearchParams();
-      formData.append('topicId', data.topicId);
-      formData.append('topic', data.topic);
-      formData.append('details', data.details);
-      formData.append('difficulty', data.difficulty);
-      formData.append('isClass', String(data.isClass));
-      formData.append('isQuestions', String(data.isQuestions));
-      formData.append('totalQuestions', String(data.totalQuestions));
-      formData.append('correctQuestions', String(data.correctQuestions));
-      formData.append('date', data.date);
+
+      // Verificar se é StudySession ou SimuladoSession
+      if ('topicId' in data) {
+        // É StudySession
+        formData.append('type', 'study');
+        formData.append('topicId', data.topicId);
+        formData.append('topic', data.topic);
+        formData.append('details', data.details);
+        formData.append('difficulty', data.difficulty);
+        formData.append('isClass', String(data.isClass));
+        formData.append('isQuestions', String(data.isQuestions));
+        formData.append('totalQuestions', String(data.totalQuestions));
+        formData.append('correctQuestions', String(data.correctQuestions));
+        formData.append('date', data.date);
+      } else {
+        // É SimuladoSession
+        formData.append('type', 'simulado');
+        formData.append('id', data.id);
+        formData.append('description', data.description);
+        formData.append('totalQuestionsGeneral', String(data.totalQuestionsGeneral));
+        formData.append('clinicaQuestions', String(data.clinicaQuestions));
+        formData.append('clinicaCorrect', String(data.clinicaCorrect));
+        formData.append('cirurgiaQuestions', String(data.cirurgiaQuestions));
+        formData.append('cirurgiaCorrect', String(data.cirurgiaCorrect));
+        formData.append('preventivaQuestions', String(data.preventivaQuestions));
+        formData.append('preventivaCorrect', String(data.preventivaCorrect));
+        formData.append('pediatriaQuestions', String(data.pediatriaQuestions));
+        formData.append('pediatriaCorrect', String(data.pediatriaCorrect));
+        formData.append('ginecologiaQuestions', String(data.ginecologiaQuestions));
+        formData.append('ginecologiaCorrect', String(data.ginecologiaCorrect));
+        formData.append('date', data.date);
+      }
 
       const response = await fetch(sheetUrl, {
         method: 'POST',
@@ -155,6 +186,10 @@ const App: React.FC = () => {
         setErrorCode(result.code || 'UNKNOWN_ERROR');
         setStatus(AppStatus.ERROR);
       } else {
+        // Armazenar changeLog se disponível
+        if (result.changeLog && Array.isArray(result.changeLog)) {
+          setChangeLog(result.changeLog);
+        }
         setStatus(AppStatus.SUCCESS);
       }
     } catch (error: any) {
@@ -174,6 +209,7 @@ const App: React.FC = () => {
 
   const resetForm = () => {
     setStatus(AppStatus.IDLE);
+    setChangeLog([]);
   };
 
   return (
@@ -193,13 +229,49 @@ const App: React.FC = () => {
               <p className="text-[10px] uppercase tracking-wide text-gray-400 font-bold">Sistema de Revisão</p>
             </div>
           </div>
-          <button 
+          <button
             onClick={() => setIsConfigOpen(true)}
             className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-full transition-all"
             title="Configurações"
           >
             <Settings className="w-5 h-5" />
           </button>
+        </div>
+
+        {/* Tabs Navigation */}
+        <div className="bg-white px-4 sm:px-6 border-b border-gray-200">
+          <div className="flex gap-2">
+            <button
+              onClick={() => {
+                setActiveTab('temas');
+                resetForm();
+              }}
+              className={`
+                flex items-center gap-2 px-4 py-3 font-medium text-sm transition-all border-b-2
+                ${activeTab === 'temas'
+                  ? 'text-blue-600 border-blue-600'
+                  : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'}
+              `}
+            >
+              <BookOpen className="w-4 h-4" />
+              Registro de Temas
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab('simulados');
+                resetForm();
+              }}
+              className={`
+                flex items-center gap-2 px-4 py-3 font-medium text-sm transition-all border-b-2
+                ${activeTab === 'simulados'
+                  ? 'text-purple-600 border-purple-600'
+                  : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'}
+              `}
+            >
+              <FileText className="w-4 h-4" />
+              Simulados
+            </button>
+          </div>
         </div>
 
         {/* Main Content: Reduced padding on mobile (px-4 vs px-6) */}
@@ -218,15 +290,15 @@ const App: React.FC = () => {
 
           {status === AppStatus.SUCCESS ? (
             <div className="py-8 flex flex-col items-center justify-center text-center animate-in zoom-in duration-300 h-full">
-              
+
               {/* Moldura da Foto */}
               <div className="relative mb-6 group">
                 <div className="absolute inset-0 bg-blue-500 rounded-full blur opacity-20 group-hover:opacity-30 transition-opacity"></div>
-                
-                <div className="w-32 h-32 sm:w-40 sm:h-40 rounded-full border-4 border-white shadow-xl overflow-hidden relative bg-gray-100 flex items-center justify-center">
-                   <img 
-                    src={currentImageSrc} 
-                    alt="Celebration" 
+
+                <div className="w-48 h-48 sm:w-64 sm:h-64 rounded-full border-4 border-white shadow-xl overflow-hidden relative bg-gray-100 flex items-center justify-center">
+                   <img
+                    src={currentImageSrc}
+                    alt="Celebration"
                     className="w-full h-full object-cover"
                     onError={(e) => {
                       if (isFallbackImage) return;
@@ -242,7 +314,7 @@ const App: React.FC = () => {
               </div>
 
               <h2 className="text-xl sm:text-2xl font-bold text-gray-800 mb-2">Excelente, {successData.nickname}!</h2>
-              
+
               {isFallbackImage && (
                 <p className="text-xs text-amber-600 mb-2 bg-amber-50 px-2 py-1 rounded border border-amber-100">
                   Foto não encontrada.
@@ -250,18 +322,33 @@ const App: React.FC = () => {
               )}
 
               <p className="text-gray-500 mb-8 max-w-[240px] text-sm leading-relaxed">
-                Dados salvos e revisões agendadas conforme o protocolo.
+                {activeTab === 'temas'
+                  ? 'Dados salvos e revisões agendadas conforme o protocolo.'
+                  : 'Simulado registrado com sucesso!'}
               </p>
-              
+
+              {/* ChangeLog Display - only for temas tab */}
+              {activeTab === 'temas' && changeLog.length > 0 && (
+                <div className="w-full mb-6">
+                  <ChangeLogDisplay changeLog={changeLog} />
+                </div>
+              )}
+
               <button
                 onClick={resetForm}
                 className="w-full py-3 px-6 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-colors shadow-lg shadow-gray-200 active:scale-95 transform"
               >
-                Nova Sessão
+                {activeTab === 'temas' ? 'Nova Sessão' : 'Novo Simulado'}
               </button>
             </div>
           ) : (
-            <StudyForm onSubmit={handleSubmit} status={status} />
+            <>
+              {activeTab === 'temas' ? (
+                <StudyForm onSubmit={handleSubmit} status={status} />
+              ) : (
+                <SimuladosForm onSubmit={handleSubmit} status={status} />
+              )}
+            </>
           )}
 
           {status === AppStatus.ERROR && (

@@ -47,6 +47,11 @@ const DEADLINE_DATE = new Date(new Date().getFullYear(), 9, 15); // 15 de Outubr
 const MIN_INTERVAL = 14; // Intervalo mínimo entre revisões
 
 // ==========================================
+// SISTEMA DE LOG DE MUDANÇAS
+// ==========================================
+let changeLog = [];
+
+// ==========================================
 // FUNÇÃO CORS - doGet (Aceita requisições OPTIONS)
 // ==========================================
 function doGet(e) {
@@ -65,49 +70,97 @@ function doPost(e) {
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     setupSheets(ss);
 
-    // Processar dados URL-encoded ao invés de JSON
-    const data = {
-      topicId: e.parameter.topicId || '',
-      topic: e.parameter.topic || '',
-      details: e.parameter.details || '',
-      difficulty: e.parameter.difficulty || '',
-      isClass: e.parameter.isClass === 'true',
-      isQuestions: e.parameter.isQuestions === 'true',
-      totalQuestions: parseInt(e.parameter.totalQuestions) || 0,
-      correctQuestions: parseInt(e.parameter.correctQuestions) || 0,
-      date: e.parameter.date || ''
-    };
+    const type = e.parameter.type || 'study';
 
-    // VALIDAR DUPLICATA ANTES DE SALVAR
-    if (isDuplicateFirstEntry(ss, data)) {
+    if (type === 'simulado') {
+      // Processar dados de simulado
+      const simuladoData = {
+        id: e.parameter.id || '',
+        description: e.parameter.description || '',
+        totalQuestionsGeneral: parseInt(e.parameter.totalQuestionsGeneral) || 0,
+        clinicaQuestions: parseInt(e.parameter.clinicaQuestions) || 0,
+        clinicaCorrect: parseInt(e.parameter.clinicaCorrect) || 0,
+        cirurgiaQuestions: parseInt(e.parameter.cirurgiaQuestions) || 0,
+        cirurgiaCorrect: parseInt(e.parameter.cirurgiaCorrect) || 0,
+        preventivaQuestions: parseInt(e.parameter.preventivaQuestions) || 0,
+        preventivaCorrect: parseInt(e.parameter.preventivaCorrect) || 0,
+        pediatriaQuestions: parseInt(e.parameter.pediatriaQuestions) || 0,
+        pediatriaCorrect: parseInt(e.parameter.pediatriaCorrect) || 0,
+        ginecologiaQuestions: parseInt(e.parameter.ginecologiaQuestions) || 0,
+        ginecologiaCorrect: parseInt(e.parameter.ginecologiaCorrect) || 0,
+        date: e.parameter.date || ''
+      };
+
+      const simuladosSheet = ss.getSheetByName("SIMULADOS");
+      simuladosSheet.appendRow([
+        simuladoData.id,
+        simuladoData.description,
+        simuladoData.totalQuestionsGeneral,
+        simuladoData.clinicaQuestions,
+        simuladoData.clinicaCorrect,
+        simuladoData.cirurgiaQuestions,
+        simuladoData.cirurgiaCorrect,
+        simuladoData.preventivaQuestions,
+        simuladoData.preventivaCorrect,
+        simuladoData.pediatriaQuestions,
+        simuladoData.pediatriaCorrect,
+        simuladoData.ginecologiaQuestions,
+        simuladoData.ginecologiaCorrect,
+        new Date() // Timestamp
+      ]);
+
+      return ContentService.createTextOutput(JSON.stringify({ 'status': 'success' }))
+        .setMimeType(ContentService.MimeType.JSON);
+
+    } else {
+      // Processar dados de estudo (original)
+      changeLog = []; // Inicializar log de mudanças
+
+      const data = {
+        topicId: e.parameter.topicId || '',
+        topic: e.parameter.topic || '',
+        details: e.parameter.details || '',
+        difficulty: e.parameter.difficulty || '',
+        isClass: e.parameter.isClass === 'true',
+        isQuestions: e.parameter.isQuestions === 'true',
+        totalQuestions: parseInt(e.parameter.totalQuestions) || 0,
+        correctQuestions: parseInt(e.parameter.correctQuestions) || 0,
+        date: e.parameter.date || ''
+      };
+
+      // VALIDAR DUPLICATA ANTES DE SALVAR
+      if (isDuplicateFirstEntry(ss, data)) {
+        return ContentService.createTextOutput(JSON.stringify({
+          'status': 'error',
+          'code': 'DUPLICATE_FIRST_ENTRY',
+          'message': 'Este tema já possui uma "Primeira Entrada". Para registrar novamente, selecione "Revisão" nos detalhes.'
+        })).setMimeType(ContentService.MimeType.JSON);
+      }
+
+      const entrySheet = ss.getSheetByName("DATA ENTRY");
+
+      // 1. REGISTRAR NO DATA ENTRY
+      entrySheet.appendRow([
+        data.topicId,
+        data.topic,
+        data.details,
+        data.difficulty,
+        data.isClass,
+        data.isQuestions,
+        data.totalQuestions,
+        data.correctQuestions,
+        data.date,
+        new Date() // Timestamp
+      ]);
+
+      // 2. PROCESSAR LÓGICA DE REVISÃO
+      processEntry(ss, data);
+
       return ContentService.createTextOutput(JSON.stringify({
-        'status': 'error',
-        'code': 'DUPLICATE_FIRST_ENTRY',
-        'message': 'Este tema já possui uma "Primeira Entrada". Para registrar novamente, selecione "Revisão" nos detalhes.'
+        'status': 'success',
+        'changeLog': changeLog
       })).setMimeType(ContentService.MimeType.JSON);
     }
-
-    const entrySheet = ss.getSheetByName("DATA ENTRY");
-
-    // 1. REGISTRAR NO DATA ENTRY
-    entrySheet.appendRow([
-      data.topicId,
-      data.topic,
-      data.details,
-      data.difficulty,
-      data.isClass,
-      data.isQuestions,
-      data.totalQuestions,
-      data.correctQuestions,
-      data.date,
-      new Date() // Timestamp
-    ]);
-
-    // 2. PROCESSAR LÓGICA DE REVISÃO
-    processEntry(ss, data);
-
-    return ContentService.createTextOutput(JSON.stringify({ 'status': 'success' }))
-      .setMimeType(ContentService.MimeType.JSON);
 
   } catch (err) {
     return ContentService.createTextOutput(JSON.stringify({
@@ -134,6 +187,24 @@ function setupSheets(ss) {
     const sheet = ss.insertSheet("TEMAS");
     sheet.appendRow(["ID", "TEMA", "COR"]);
     sheet.appendRow(["ExemploID", "ExemploTema", "Vermelho"]);
+  }
+  if (!ss.getSheetByName("SIMULADOS")) {
+    ss.insertSheet("SIMULADOS").appendRow([
+      "ID",
+      "DESCRIÇÃO",
+      "TOTAL_GERAL",
+      "CLINICA_QUESTOES",
+      "CLINICA_ACERTOS",
+      "CIRURGIA_QUESTOES",
+      "CIRURGIA_ACERTOS",
+      "PREVENTIVA_QUESTOES",
+      "PREVENTIVA_ACERTOS",
+      "PEDIATRIA_QUESTOES",
+      "PEDIATRIA_ACERTOS",
+      "GINECO_QUESTOES",
+      "GINECO_ACERTOS",
+      "TIMESTAMP"
+    ]);
   }
 }
 
@@ -255,9 +326,11 @@ function loadDateCounts(ss) {
 function scheduleReviews(ss, data, entryDate, intervalos, dateCounts) {
   const diarySheet = ss.getSheetByName("DIÁRIO");
 
-  intervalos.forEach(daysToAdd => {
+  intervalos.forEach((daysToAdd, index) => {
     let targetDate = new Date(entryDate);
     targetDate.setDate(targetDate.getDate() + daysToAdd);
+    let originalDate = new Date(targetDate);
+    let wasAdjusted = false;
 
     // Balanceamento de carga
     let attempts = 0;
@@ -271,6 +344,7 @@ function scheduleReviews(ss, data, entryDate, intervalos, dateCounts) {
       }
       targetDate.setDate(targetDate.getDate() + 1);
       attempts++;
+      wasAdjusted = true;
     }
 
     if (targetDate <= DEADLINE_DATE) {
@@ -281,6 +355,28 @@ function scheduleReviews(ss, data, entryDate, intervalos, dateCounts) {
         targetDate,
         true
       ]);
+
+      let logEntry = {
+        type: 'REVIEW_SCHEDULED',
+        action: 'Revisão Agendada',
+        reviewNumber: index + 1,
+        date: formatDate(targetDate),
+        daysFromEntry: daysToAdd
+      };
+
+      if (wasAdjusted) {
+        logEntry.note = 'Data ajustada por balanceamento de carga (de ' + formatDate(originalDate) + ')';
+      }
+
+      changeLog.push(logEntry);
+    } else {
+      changeLog.push({
+        type: 'REVIEW_SKIPPED',
+        action: 'Revisão Não Agendada',
+        reviewNumber: index + 1,
+        reason: 'Data excede o prazo limite (' + formatDate(DEADLINE_DATE) + ')',
+        wouldBeDate: formatDate(targetDate)
+      });
     }
   });
 }
@@ -313,6 +409,13 @@ function applyExtraReviewRule(ss, data, firstDate, intervalos) {
       extraReviewDate,
       true
     ]);
+
+    changeLog.push({
+      type: 'EXTRA_REVIEW_ADDED',
+      action: 'Revisão Extra Adicionada',
+      date: formatDate(extraReviewDate),
+      reason: 'Regra de Julho (última revisão foi em ' + formatDate(lastReviewDate) + ')'
+    });
   }
 }
 
@@ -332,11 +435,34 @@ function processFirstEntry(ss, data, entryDate, intervalos) {
     true
   ]);
 
+  changeLog.push({
+    type: 'FIRST_CONTACT_ADDED',
+    action: 'Primeiro Contato Registrado',
+    date: formatDate(entryDate),
+    topic: data.topic
+  });
+
   // 2. Calcular percentual e ajustar intervalos
   let adjustedIntervals = intervalos;
+  let adjustmentInfo = null;
   if (data.isQuestions && data.totalQuestions > 0) {
     const perc = (data.correctQuestions / data.totalQuestions) * 100;
     adjustedIntervals = calculateAdjustedIntervals(intervalos, perc);
+    adjustmentInfo = {
+      percentage: perc.toFixed(1),
+      original: intervalos,
+      adjusted: adjustedIntervals
+    };
+
+    if (JSON.stringify(intervalos) !== JSON.stringify(adjustedIntervals)) {
+      changeLog.push({
+        type: 'INTERVALS_ADJUSTED',
+        action: 'Intervalos Ajustados por Desempenho',
+        percentage: perc.toFixed(1) + '%',
+        originalIntervals: intervalos.join(', ') + ' dias',
+        adjustedIntervals: adjustedIntervals.join(', ') + ' dias'
+      });
+    }
   }
 
   // 3. Agendar revisões
@@ -346,12 +472,19 @@ function processFirstEntry(ss, data, entryDate, intervalos) {
   applyExtraReviewRule(ss, data, entryDate, adjustedIntervals);
 }
 
+// Função auxiliar para formatar data
+function formatDate(date) {
+  const d = new Date(date);
+  return Utilities.formatDate(d, Session.getScriptTimeZone(), 'dd/MM/yyyy');
+}
+
 // ==========================================
 // AJUSTE DE REVISÕES FUTURAS (z dias)
 // ==========================================
 function adjustFutureReviews(ss, data, zDays) {
   const diarySheet = ss.getSheetByName("DIÁRIO");
   const diaryData = diarySheet.getDataRange().getValues();
+  let adjustedCount = 0;
 
   for (let i = 1; i < diaryData.length; i++) {
     if ((data.topicId && diaryData[i][0] == data.topicId) || diaryData[i][1] == data.topic) {
@@ -362,8 +495,28 @@ function adjustFutureReviews(ss, data, zDays) {
 
         const range = diarySheet.getRange(i + 1, 4);
         range.setValue(newDate);
+
+        changeLog.push({
+          type: 'REVIEW_DATE_ADJUSTED',
+          action: 'Data de Revisão Ajustada',
+          oldDate: formatDate(currentDate),
+          newDate: formatDate(newDate),
+          adjustment: (zDays > 0 ? '+' : '') + zDays + ' dia(s)'
+        });
+
+        adjustedCount++;
       }
     }
+  }
+
+  if (adjustedCount > 0) {
+    changeLog.push({
+      type: 'FUTURE_REVIEWS_ADJUSTED',
+      action: 'Revisões Futuras Ajustadas',
+      count: adjustedCount,
+      adjustment: (zDays > 0 ? '+' : '') + zDays + ' dia(s)',
+      reason: 'Compensação por diferença na data de conclusão'
+    });
   }
 }
 
@@ -403,6 +556,7 @@ function recalculateRemainingReviews(ss, data, entryDate, perc) {
   if (!firstContactDate) return;
 
   // Desativar revisões futuras antigas
+  let canceledCount = 0;
   for (let i = 1; i < diaryData.length; i++) {
     if ((data.topicId && diaryData[i][0] == data.topicId) || diaryData[i][1] == data.topic) {
       if (diaryData[i][2] === "Revisão" && diaryData[i][4] === true) {
@@ -410,9 +564,28 @@ function recalculateRemainingReviews(ss, data, entryDate, perc) {
         if (revDate > entryDate) {
           const range = diarySheet.getRange(i + 1, 5);
           range.setValue(false);
+
+          changeLog.push({
+            type: 'REVIEW_CANCELED',
+            action: 'Revisão Futura Cancelada',
+            date: formatDate(revDate),
+            reason: 'Recalculando com base no desempenho da 2ª revisão'
+          });
+
+          canceledCount++;
         }
       }
     }
+  }
+
+  if (canceledCount > 0) {
+    changeLog.push({
+      type: 'REVIEWS_RECALCULATED',
+      action: 'Revisões Recalculadas',
+      canceledCount: canceledCount,
+      percentage: perc.toFixed(1) + '%',
+      newIntervals: adjustedIntervals.slice(2).join(', ') + ' dias'
+    });
   }
 
   // Reagendar revisões remanescentes
@@ -452,6 +625,19 @@ function processReview(ss, data, entryDate) {
     // 3. Desativar revisão antiga
     const range = diarySheet.getRange(rowIndex, 5);
     range.setValue(false);
+
+    let timing = 'no prazo';
+    if (z > 0) timing = z + ' dia(s) atrasado';
+    else if (z < 0) timing = Math.abs(z) + ' dia(s) adiantado';
+
+    changeLog.push({
+      type: 'REVIEW_COMPLETED',
+      action: 'Revisão Programada Concluída',
+      scheduledDate: formatDate(scheduledDate),
+      completedDate: formatDate(entryDate),
+      timing: timing,
+      daysDifference: z
+    });
   }
 
   // 4. Adicionar nova linha
@@ -463,6 +649,12 @@ function processReview(ss, data, entryDate) {
     true
   ]);
 
+  changeLog.push({
+    type: 'REVIEW_REGISTERED',
+    action: 'Revisão Registrada no Diário',
+    date: formatDate(entryDate)
+  });
+
   // 5. Ajustar próximas revisões
   if (z !== 0) {
     adjustFutureReviews(ss, data, z);
@@ -472,6 +664,12 @@ function processReview(ss, data, entryDate) {
   const reviewCount = countCompletedReviews(ss, data);
   if (reviewCount === 2 && data.isQuestions && data.totalQuestions > 0) {
     const perc = (data.correctQuestions / data.totalQuestions) * 100;
+    changeLog.push({
+      type: 'SECOND_REVIEW_PERFORMANCE',
+      action: 'Desempenho na Segunda Revisão',
+      percentage: perc.toFixed(1) + '%',
+      note: 'Recalculando revisões remanescentes'
+    });
     recalculateRemainingReviews(ss, data, entryDate, perc);
   }
 }
@@ -512,6 +710,7 @@ function handleDeadlineExtrapolations(ss, data) {
     if (reviews[i].date > DEADLINE_DATE) {
       const prevDate = i > 0 ? reviews[i - 1].date : firstContactDate;
       const daysDiff = Math.floor((DEADLINE_DATE - prevDate) / (1000 * 60 * 60 * 24));
+      const oldDate = new Date(reviews[i].date);
 
       if (daysDiff >= MIN_INTERVAL) {
         const newDate = new Date(DEADLINE_DATE);
@@ -519,10 +718,25 @@ function handleDeadlineExtrapolations(ss, data) {
         const range = diarySheet.getRange(reviews[i].index, 4);
         range.setValue(newDate);
         reviews[i].date = newDate;
+
+        changeLog.push({
+          type: 'REVIEW_MOVED_DEADLINE',
+          action: 'Revisão Movida por Prazo Limite',
+          oldDate: formatDate(oldDate),
+          newDate: formatDate(newDate),
+          reason: 'Data original excedia o prazo de ' + formatDate(DEADLINE_DATE)
+        });
       } else {
         const range = diarySheet.getRange(reviews[i].index, 5);
         range.setValue(false);
         reviews.splice(i, 1);
+
+        changeLog.push({
+          type: 'REVIEW_CANCELED_DEADLINE',
+          action: 'Revisão Cancelada por Prazo Limite',
+          date: formatDate(oldDate),
+          reason: 'Não há tempo suficiente antes do prazo (' + formatDate(DEADLINE_DATE) + ')'
+        });
       }
     }
   }
