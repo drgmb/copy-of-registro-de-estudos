@@ -789,8 +789,16 @@ function processFirstEntry(ss, data, entryDate, intervalos) {
 
 // Função auxiliar para formatar data
 function formatDate(date) {
-  const d = new Date(date);
-  return Utilities.formatDate(d, 'America/Sao_Paulo', 'dd/MM/yyyy');
+  try {
+    const d = new Date(date);
+    if (isNaN(d.getTime())) {
+      return '';
+    }
+    return Utilities.formatDate(d, 'America/Sao_Paulo', 'dd/MM/yyyy');
+  } catch (e) {
+    Logger.log('Erro ao formatar data: ' + e.toString());
+    return '';
+  }
 }
 
 // ==========================================
@@ -1061,8 +1069,29 @@ function handleDeadlineExtrapolations(ss, data) {
 // PROCESSAMENTO PRINCIPAL
 // ==========================================
 function processEntry(ss, data) {
+  // Validar e parsear data
+  if (!data.date || typeof data.date !== 'string') {
+    throw new Error('Data inválida: ' + data.date);
+  }
+
   const parts = data.date.split('/');
-  const entryDate = new Date(parts[2], parts[1] - 1, parts[0]);
+  if (parts.length !== 3) {
+    throw new Error('Formato de data inválido. Use dd/MM/yyyy: ' + data.date);
+  }
+
+  const day = parseInt(parts[0]);
+  const month = parseInt(parts[1]) - 1;
+  const year = parseInt(parts[2]);
+
+  if (isNaN(day) || isNaN(month) || isNaN(year)) {
+    throw new Error('Data com valores inválidos: ' + data.date);
+  }
+
+  const entryDate = new Date(year, month, day);
+
+  if (isNaN(entryDate.getTime())) {
+    throw new Error('Data inválida após conversão: ' + data.date);
+  }
 
   const isFirst = isFirstEntry(ss, data.topicId, data.topic);
 
