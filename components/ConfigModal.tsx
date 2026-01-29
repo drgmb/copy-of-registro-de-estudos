@@ -52,11 +52,33 @@ const MIN_INTERVAL = 14; // Intervalo mínimo entre revisões
 let changeLog = [];
 
 // ==========================================
-// FUNÇÃO CORS - doGet (Aceita requisições OPTIONS)
+// FUNÇÃO doGet - Para requisições GET (Dashboard e Diary)
 // ==========================================
 function doGet(e) {
-  return ContentService.createTextOutput(JSON.stringify({ 'status': 'ok' }))
-    .setMimeType(ContentService.MimeType.JSON);
+  const action = e.parameter.action || '';
+
+  try {
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+
+    if (action === 'getDiaryData') {
+      return ContentService.createTextOutput(JSON.stringify(getDiaryData(ss)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (action === 'getDashboardData') {
+      return ContentService.createTextOutput(JSON.stringify(getDashboardData(ss)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    return ContentService.createTextOutput(JSON.stringify({ 'status': 'ok' }))
+      .setMimeType(ContentService.MimeType.JSON);
+
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({
+      'status': 'error',
+      'message': err.toString()
+    })).setMimeType(ContentService.MimeType.JSON);
+  }
 }
 
 // ==========================================
@@ -1065,6 +1087,241 @@ function processEntry(ss, data) {
   }
 
   handleDeadlineExtrapolations(ss, data);
+}
+
+// ==========================================
+// FUNÇÃO GET DIARY DATA
+// ==========================================
+function getDiaryData(ss) {
+  const diarySheet = ss.getSheetByName("DIÁRIO");
+  const dataEntrySheet = ss.getSheetByName("DATA ENTRY");
+
+  if (!diarySheet || !dataEntrySheet) {
+    return { status: 'error', message: 'Planilhas não encontradas' };
+  }
+
+  const diaryData = diarySheet.getDataRange().getValues();
+  const dataEntryData = dataEntrySheet.getDataRange().getValues();
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+
+  const todayReviews = [];
+  const completedToday = [];
+  const overdue = [];
+  const upcoming = [];
+
+  for (let i = 1; i < diaryData.length; i++) {
+    if (!diaryData[i][4]) continue; // Pular se status = false
+
+    const dataAgendada = new Date(diaryData[i][3]);
+    dataAgendada.setHours(0, 0, 0, 0);
+    const daysDiff = Math.floor((dataAgendada - hoje) / (1000 * 60 * 60 * 24));
+
+    const review = {
+      id: diaryData[i][0],
+      tema: diaryData[i][1],
+      acao: diaryData[i][2],
+      dataAgendada: formatDate(dataAgendada),
+      status: diaryData[i][4],
+      daysDiff: daysDiff
+    };
+
+    // Check if completed
+    let isCompleted = false;
+    for (let j = 1; j < dataEntryData.length; j++) {
+      if (dataEntryData[j][1] === review.tema &&
+          dataEntryData[j][2] === 'Revisão' &&
+          dataEntryData[j][8] === formatDate(hoje)) {
+        isCompleted = true;
+        break;
+      }
+    }
+
+    if (daysDiff === 0) {
+      todayReviews.push(review);
+      if (isCompleted) completedToday.push(review);
+    } else if (daysDiff < 0 && diaryData[i][2] === 'Revisão') {
+      overdue.push(review);
+    } else if (daysDiff > 0 && daysDiff <= 7) {
+      upcoming.push(review);
+    }
+  }
+
+  // Statistics
+  let completedThisMonth = 0;
+  let totalCompleted = 0;
+  const currentMonth = hoje.getMonth();
+  const currentYear = hoje.getFullYear();
+
+  for (let i = 1; i < dataEntryData.length; i++) {
+    if (dataEntryData[i][2] === 'Revisão') {
+      totalCompleted++;
+      const parts = dataEntryData[i][8].split('/');
+      if (parts.length === 3) {
+        const month = parseInt(parts[1]) - 1;
+        const year = parseInt(parts[2]);
+        if (month === currentMonth && year === currentYear) {
+          completedThisMonth++;
+        }
+      }
+    }
+  }
+
+  return {
+    status: 'success',
+    data: {
+      today: {
+        date: formatDate(hoje),
+        reviews: todayReviews,
+        completed: completedToday,
+        total: todayReviews.length,
+        completedCount: completedToday.length,
+        pendingCount: todayReviews.length - completedToday.length
+      },
+      statistics: {
+        completedToday: completedToday.length,
+        completedThisMonth: completedThisMonth,
+        totalCompleted: totalCompleted,
+        overdueCount: overdue.length,
+        upcomingCount: upcoming.length
+      },
+      overdue: overdue,
+      upcoming: upcoming,
+      allActiveReviews: diaryData.length - 1
+    }
+  };
+}
+
+// ==========================================
+// FUNÇÃO GET DASHBOARD DATA
+// ==========================================
+function getDashboardData(ss) {
+  const dataEntrySheet = ss.getSheetByName("DATA ENTRY");
+  const simuladosSheet = ss.getSheetByName("SIMULADOS");
+  const temasSheet = ss.getSheetByName("TEMAS");
+
+  if (!dataEntrySheet || !simuladosSheet) {
+    return { status: 'error', message: 'Planilhas não encontradas' };
+  }
+
+  const dataEntryData = dataEntrySheet.getDataRange().getValues();
+  const simuladosData = simuladosSheet.getDataRange().getValues();
+  const temasData = temasSheet ? temasSheet.getDataRange().getValues() : [];
+
+  // Stats por tema
+  const topicStatsMap = {};
+  let totalQuestoesRevisoes = 0;
+  let totalAcertosRevisoes = 0;
+  let totalRevisoes = 0;
+
+  for (let i = 1; i < dataEntryData.length; i++) {
+    if (dataEntryData[i][2] === 'Revisão' && dataEntryData[i][5]) {
+      totalRevisoes++;
+      const tema = dataEntryData[i][1];
+      const total = parseInt(dataEntryData[i][6]) || 0;
+      const acertos = parseInt(dataEntryData[i][7]) || 0;
+
+      if (!topicStatsMap[tema]) {
+        let cor = 'Amarelo';
+        for (let j = 1; j < temasData.length; j++) {
+          if (temasData[j][1] === tema) {
+            cor = temasData[j][2] || 'Amarelo';
+            break;
+          }
+        }
+        topicStatsMap[tema] = { tema, totalQuestoes: 0, totalAcertos: 0, cor };
+      }
+
+      topicStatsMap[tema].totalQuestoes += total;
+      topicStatsMap[tema].totalAcertos += acertos;
+      totalQuestoesRevisoes += total;
+      totalAcertosRevisoes += acertos;
+    }
+  }
+
+  const topicStats = Object.values(topicStatsMap).map(t => ({
+    ...t,
+    percentual: t.totalQuestoes > 0 ? (t.totalAcertos / t.totalQuestoes) * 100 : 0
+  }));
+
+  // Stats por área (simulados)
+  const areaStatsMap = {
+    'Clínica': { area: 'Clínica', totalQuestoes: 0, totalAcertos: 0 },
+    'Cirurgia': { area: 'Cirurgia', totalQuestoes: 0, totalAcertos: 0 },
+    'Preventiva': { area: 'Preventiva', totalQuestoes: 0, totalAcertos: 0 },
+    'Pediatria': { area: 'Pediatria', totalQuestoes: 0, totalAcertos: 0 },
+    'Ginecologia': { area: 'Ginecologia', totalQuestoes: 0, totalAcertos: 0 }
+  };
+
+  let totalQuestoesSimulados = 0;
+  let totalAcertosSimulados = 0;
+
+  for (let i = 1; i < simuladosData.length; i++) {
+    areaStatsMap['Clínica'].totalQuestoes += parseInt(simuladosData[i][3]) || 0;
+    areaStatsMap['Clínica'].totalAcertos += parseInt(simuladosData[i][4]) || 0;
+    areaStatsMap['Cirurgia'].totalQuestoes += parseInt(simuladosData[i][5]) || 0;
+    areaStatsMap['Cirurgia'].totalAcertos += parseInt(simuladosData[i][6]) || 0;
+    areaStatsMap['Preventiva'].totalQuestoes += parseInt(simuladosData[i][7]) || 0;
+    areaStatsMap['Preventiva'].totalAcertos += parseInt(simuladosData[i][8]) || 0;
+    areaStatsMap['Pediatria'].totalQuestoes += parseInt(simuladosData[i][9]) || 0;
+    areaStatsMap['Pediatria'].totalAcertos += parseInt(simuladosData[i][10]) || 0;
+    areaStatsMap['Ginecologia'].totalQuestoes += parseInt(simuladosData[i][11]) || 0;
+    areaStatsMap['Ginecologia'].totalAcertos += parseInt(simuladosData[i][12]) || 0;
+
+    totalQuestoesSimulados += parseInt(simuladosData[i][2]) || 0;
+    totalAcertosSimulados += (parseInt(simuladosData[i][4]) || 0) +
+                             (parseInt(simuladosData[i][6]) || 0) +
+                             (parseInt(simuladosData[i][8]) || 0) +
+                             (parseInt(simuladosData[i][10]) || 0) +
+                             (parseInt(simuladosData[i][12]) || 0);
+  }
+
+  const areaStats = Object.values(areaStatsMap).map(a => ({
+    ...a,
+    percentual: a.totalQuestoes > 0 ? (a.totalAcertos / a.totalQuestoes) * 100 : 0
+  }));
+
+  // Atividade diária (últimos 14 dias)
+  const dailyActivity = [];
+  for (let i = 13; i >= 0; i--) {
+    const date = new Date();
+    date.setDate(date.getDate() - i);
+    date.setHours(0, 0, 0, 0);
+    const dateStr = formatDate(date);
+
+    let revisoes = 0;
+    let simulados = 0;
+
+    for (let j = 1; j < dataEntryData.length; j++) {
+      if (dataEntryData[j][8] === dateStr && dataEntryData[j][2] === 'Revisão') {
+        revisoes++;
+      }
+    }
+
+    for (let j = 1; j < simuladosData.length; j++) {
+      const timestamp = new Date(simuladosData[j][13]);
+      if (formatDate(timestamp) === dateStr) {
+        simulados++;
+      }
+    }
+
+    dailyActivity.push({ date: dateStr, revisoes, simulados });
+  }
+
+  return {
+    status: 'success',
+    data: {
+      topicStats,
+      areaStats,
+      dailyActivity,
+      totalRevisoes,
+      totalSimulados: simuladosData.length - 1,
+      totalQuestoesRevisoes,
+      totalAcertosRevisoes,
+      totalQuestoesSimulados,
+      totalAcertosSimulados
+    }
+  };
 }`;
 
   return (

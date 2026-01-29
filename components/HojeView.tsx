@@ -12,17 +12,34 @@ import {
   RefreshCw,
   Loader2,
   CalendarCheck,
-  CalendarX
+  CalendarX,
+  Filter,
+  Flame,
+  Zap,
+  Check
 } from 'lucide-react';
 
 interface HojeViewProps {
   sheetUrl: string;
 }
 
+type PeriodFilter = 'hoje' | 'semana' | 'mes' | 'todos';
+type StatusFilter = 'todos' | 'pendentes' | 'completas' | 'atrasadas';
+
+const COLOR_MAP: { [key: string]: { bg: string; border: string; text: string; priority: number } } = {
+  'Vermelho': { bg: 'bg-red-100', border: 'border-red-400', text: 'text-red-900', priority: 1 },
+  'Amarelo': { bg: 'bg-yellow-100', border: 'border-yellow-400', text: 'text-yellow-900', priority: 2 },
+  'Verde': { bg: 'bg-green-100', border: 'border-green-400', text: 'text-green-900', priority: 3 },
+  'Roxo': { bg: 'bg-purple-100', border: 'border-purple-400', text: 'text-purple-900', priority: 2 },
+  'default': { bg: 'bg-gray-100', border: 'border-gray-400', text: 'text-gray-900', priority: 2 }
+};
+
 export const HojeView: React.FC<HojeViewProps> = ({ sheetUrl }) => {
   const [data, setData] = useState<DiaryData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
+  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('hoje');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('todos');
 
   const fetchData = async () => {
     if (!sheetUrl) {
@@ -60,7 +77,7 @@ export const HojeView: React.FC<HojeViewProps> = ({ sheetUrl }) => {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
-        <Loader2 className="w-12 h-12 text-blue-600 animate-spin mb-4" />
+        <Loader2 className="w-12 h-12 text-green-600 animate-spin mb-4" />
         <p className="text-gray-600 font-medium">Carregando dados do diário...</p>
       </div>
     );
@@ -92,9 +109,70 @@ export const HojeView: React.FC<HojeViewProps> = ({ sheetUrl }) => {
     );
   }
 
+  // Filtrar revisões baseado no período
+  const getFilteredReviews = (): DiaryReview[] => {
+    let reviews: DiaryReview[] = [];
+
+    switch (periodFilter) {
+      case 'hoje':
+        reviews = [...data.today.reviews];
+        break;
+      case 'semana':
+        reviews = [...data.today.reviews, ...data.upcoming.filter(r => r.daysDiff <= 7)];
+        break;
+      case 'mes':
+        reviews = [...data.today.reviews, ...data.upcoming.filter(r => r.daysDiff <= 30)];
+        break;
+      case 'todos':
+        reviews = [...data.overdue, ...data.today.reviews, ...data.upcoming];
+        break;
+    }
+
+    // Aplicar filtro de status
+    switch (statusFilter) {
+      case 'pendentes':
+        reviews = reviews.filter(r => !data.today.completed.some(c => c.tema === r.tema));
+        break;
+      case 'completas':
+        reviews = reviews.filter(r => data.today.completed.some(c => c.tema === r.tema));
+        break;
+      case 'atrasadas':
+        reviews = reviews.filter(r => r.daysDiff < 0);
+        break;
+    }
+
+    // Ordenar por prioridade (dias atrasados/faltando e cor)
+    return reviews.sort((a, b) => {
+      // Primeiro: atrasadas vêm primeiro
+      if (a.daysDiff < 0 && b.daysDiff >= 0) return -1;
+      if (a.daysDiff >= 0 && b.daysDiff < 0) return 1;
+
+      // Depois: ordenar por dias (mais urgentes primeiro)
+      if (a.daysDiff !== b.daysDiff) return a.daysDiff - b.daysDiff;
+
+      return 0;
+    });
+  };
+
+  const filteredReviews = getFilteredReviews();
   const progressPercentage = data.today.total > 0
     ? (data.today.completedCount / data.today.total) * 100
     : 0;
+
+  const getPriorityIcon = (daysDiff: number) => {
+    if (daysDiff < 0) return <Flame className="w-4 h-4 text-red-600" />;
+    if (daysDiff === 0) return <Zap className="w-4 h-4 text-orange-500" />;
+    if (daysDiff <= 2) return <AlertCircle className="w-4 h-4 text-yellow-600" />;
+    return <Clock className="w-4 h-4 text-gray-400" />;
+  };
+
+  const getColorForTopic = (tema: string) => {
+    // Aqui você pode implementar lógica para buscar a cor do tema
+    // Por enquanto, vou usar uma lógica simples baseada no hash do tema
+    const hash = tema.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    const colors = ['Vermelho', 'Amarelo', 'Verde', 'Roxo'];
+    return colors[hash % colors.length];
+  };
 
   return (
     <div className="space-y-4">
@@ -119,48 +197,48 @@ export const HojeView: React.FC<HojeViewProps> = ({ sheetUrl }) => {
       {/* Estatísticas Principais */}
       <div className="grid grid-cols-2 gap-3">
         {/* Hoje */}
-        <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200">
+        <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-xl border border-green-200">
           <div className="flex items-center gap-2 mb-2">
-            <div className="p-1.5 bg-blue-600 rounded-lg">
+            <div className="p-1.5 bg-green-600 rounded-lg">
               <CalendarCheck className="w-4 h-4 text-white" />
             </div>
-            <span className="text-xs font-bold text-blue-900 uppercase tracking-wide">Hoje</span>
+            <span className="text-xs font-bold text-green-900 uppercase tracking-wide">Hoje</span>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-blue-900">{data.today.completedCount}</span>
-            <span className="text-sm text-blue-700">/ {data.today.total}</span>
+            <span className="text-3xl font-bold text-green-900">{data.today.completedCount}</span>
+            <span className="text-sm text-green-700">/ {data.today.total}</span>
           </div>
-          <p className="text-xs text-blue-700 mt-1">
+          <p className="text-xs text-green-700 mt-1">
             {data.today.pendingCount} pendente{data.today.pendingCount !== 1 ? 's' : ''}
           </p>
         </div>
 
         {/* Este Mês */}
-        <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-xl border border-green-200">
+        <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200">
           <div className="flex items-center gap-2 mb-2">
-            <div className="p-1.5 bg-green-600 rounded-lg">
+            <div className="p-1.5 bg-blue-600 rounded-lg">
               <TrendingUp className="w-4 h-4 text-white" />
             </div>
-            <span className="text-xs font-bold text-green-900 uppercase tracking-wide">Este Mês</span>
+            <span className="text-xs font-bold text-blue-900 uppercase tracking-wide">Este Mês</span>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-green-900">{data.statistics.completedThisMonth}</span>
+            <span className="text-3xl font-bold text-blue-900">{data.statistics.completedThisMonth}</span>
           </div>
-          <p className="text-xs text-green-700 mt-1">revisões completadas</p>
+          <p className="text-xs text-blue-700 mt-1">revisões completadas</p>
         </div>
 
         {/* Atrasadas */}
-        <div className="p-4 bg-gradient-to-br from-orange-50 to-orange-100 rounded-xl border border-orange-200">
+        <div className="p-4 bg-gradient-to-br from-red-50 to-red-100 rounded-xl border border-red-200">
           <div className="flex items-center gap-2 mb-2">
-            <div className="p-1.5 bg-orange-600 rounded-lg">
+            <div className="p-1.5 bg-red-600 rounded-lg">
               <AlertCircle className="w-4 h-4 text-white" />
             </div>
-            <span className="text-xs font-bold text-orange-900 uppercase tracking-wide">Atrasadas</span>
+            <span className="text-xs font-bold text-red-900 uppercase tracking-wide">Atrasadas</span>
           </div>
           <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-orange-900">{data.statistics.overdueCount}</span>
+            <span className="text-3xl font-bold text-red-900">{data.statistics.overdueCount}</span>
           </div>
-          <p className="text-xs text-orange-700 mt-1">precisam atenção</p>
+          <p className="text-xs text-red-700 mt-1">precisam atenção</p>
         </div>
 
         {/* Total */}
@@ -187,32 +265,106 @@ export const HojeView: React.FC<HojeViewProps> = ({ sheetUrl }) => {
           </div>
           <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-500 ease-out"
+              className="h-full bg-gradient-to-r from-green-500 to-green-600 transition-all duration-500 ease-out"
               style={{ width: `${progressPercentage}%` }}
             ></div>
           </div>
         </div>
       )}
 
-      {/* Revisões de Hoje */}
-      {data.today.reviews.length > 0 && (
-        <div className="p-4 bg-white rounded-xl border-2 border-gray-200">
-          <div className="flex items-center gap-2 mb-3">
-            <Clock className="w-5 h-5 text-blue-600" />
+      {/* Filtros */}
+      <div className="p-4 bg-white rounded-xl border-2 border-gray-200 space-y-3">
+        <div className="flex items-center gap-2">
+          <Filter className="w-4 h-4 text-gray-600" />
+          <h3 className="text-sm font-bold text-gray-800">FILTROS</h3>
+        </div>
+
+        {/* Filtro de Período */}
+        <div className="space-y-2">
+          <label className="text-xs font-medium text-gray-600">Período</label>
+          <div className="flex gap-2">
+            {[
+              { value: 'hoje', label: 'Hoje' },
+              { value: 'semana', label: 'Semana' },
+              { value: 'mes', label: 'Mês' },
+              { value: 'todos', label: 'Todos' }
+            ].map(option => (
+              <button
+                key={option.value}
+                onClick={() => setPeriodFilter(option.value as PeriodFilter)}
+                className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                  periodFilter === option.value
+                    ? 'bg-green-600 text-white shadow-sm'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Filtro de Status */}
+        <div className="space-y-2">
+          <label className="text-xs font-medium text-gray-600">Status</label>
+          <div className="flex gap-2">
+            {[
+              { value: 'todos', label: 'Todos' },
+              { value: 'pendentes', label: 'Pendentes' },
+              { value: 'completas', label: 'Completas' },
+              { value: 'atrasadas', label: 'Atrasadas' }
+            ].map(option => (
+              <button
+                key={option.value}
+                onClick={() => setStatusFilter(option.value as StatusFilter)}
+                className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
+                  statusFilter === option.value
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Lista de Revisões Filtradas */}
+      <div className="p-4 bg-white rounded-xl border-2 border-gray-200">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <BarChart3 className="w-5 h-5 text-green-600" />
             <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide">
-              Revisões de Hoje ({data.today.reviews.length})
+              Revisões ({filteredReviews.length})
             </h3>
           </div>
+          <span className="text-xs text-gray-500">
+            {periodFilter === 'hoje' ? 'Hoje' :
+             periodFilter === 'semana' ? 'Esta Semana' :
+             periodFilter === 'mes' ? 'Este Mês' : 'Todas'}
+          </span>
+        </div>
+
+        {filteredReviews.length === 0 ? (
+          <div className="text-center py-8">
+            <Check className="w-12 h-12 text-green-500 mx-auto mb-2" />
+            <p className="text-gray-500 text-sm">Nenhuma revisão encontrada com os filtros aplicados</p>
+          </div>
+        ) : (
           <div className="space-y-2">
-            {data.today.reviews.map((review, index) => {
+            {filteredReviews.map((review, index) => {
               const isCompleted = data.today.completed.some(c => c.tema === review.tema);
+              const color = getColorForTopic(review.tema);
+              const colorStyle = COLOR_MAP[color] || COLOR_MAP['default'];
+
               return (
                 <div
                   key={index}
                   className={`flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
                     isCompleted
-                      ? 'bg-green-50 border-green-200'
-                      : 'bg-gray-50 border-gray-200 hover:border-blue-300'
+                      ? 'bg-green-50 border-green-300'
+                      : `${colorStyle.bg} ${colorStyle.border}`
                   }`}
                 >
                   <div className="flex-shrink-0">
@@ -224,110 +376,43 @@ export const HojeView: React.FC<HojeViewProps> = ({ sheetUrl }) => {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className={`text-sm font-medium ${
-                      isCompleted ? 'text-green-900 line-through' : 'text-gray-900'
+                      isCompleted ? 'text-green-900 line-through' : colorStyle.text
                     }`}>
                       {review.tema}
                     </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      {review.acao}
-                    </p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-xs text-gray-500">{review.acao}</span>
+                      <span className="text-xs text-gray-400">•</span>
+                      <span className="text-xs text-gray-500">{review.dataAgendada}</span>
+                    </div>
                   </div>
-                  {isCompleted && (
-                    <span className="text-xs font-bold text-green-700 bg-green-100 px-2 py-1 rounded-full">
-                      Concluída
-                    </span>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {getPriorityIcon(review.daysDiff)}
+                    {!isCompleted && (
+                      <span className={`text-xs font-bold px-2 py-1 rounded-full ${
+                        review.daysDiff < 0 ? 'bg-red-100 text-red-700' :
+                        review.daysDiff === 0 ? 'bg-orange-100 text-orange-700' :
+                        review.daysDiff <= 2 ? 'bg-yellow-100 text-yellow-700' :
+                        'bg-blue-100 text-blue-700'
+                      }`}>
+                        {review.daysDiff < 0
+                          ? `${Math.abs(review.daysDiff)}d atrás`
+                          : review.daysDiff === 0
+                          ? 'Hoje'
+                          : `${review.daysDiff}d`}
+                      </span>
+                    )}
+                    {isCompleted && (
+                      <span className="text-xs font-bold text-green-700 bg-green-100 px-2 py-1 rounded-full">
+                        Concluída
+                      </span>
+                    )}
+                  </div>
                 </div>
               );
             })}
           </div>
-        </div>
-      )}
-
-      {/* Revisões Atrasadas */}
-      {data.overdue.length > 0 && (
-        <div className="p-4 bg-orange-50 rounded-xl border-2 border-orange-200">
-          <div className="flex items-center gap-2 mb-3">
-            <CalendarX className="w-5 h-5 text-orange-600" />
-            <h3 className="text-sm font-bold text-orange-900 uppercase tracking-wide">
-              Revisões Atrasadas ({data.overdue.length})
-            </h3>
-          </div>
-          <div className="space-y-2">
-            {data.overdue.map((review, index) => (
-              <div
-                key={index}
-                className="flex items-start gap-3 p-3 bg-white rounded-lg border border-orange-200"
-              >
-                <AlertCircle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900">{review.tema}</p>
-                  <p className="text-xs text-gray-600 mt-0.5">{review.acao}</p>
-                  <div className="flex items-center gap-2 mt-1.5">
-                    <span className="text-xs text-orange-700 font-medium">
-                      Prevista: {review.dataAgendada}
-                    </span>
-                    <span className="text-xs font-bold text-orange-800 bg-orange-100 px-2 py-0.5 rounded-full">
-                      {Math.abs(review.daysDiff)} dia{Math.abs(review.daysDiff) !== 1 ? 's' : ''} atrás
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Próximas Revisões */}
-      {data.upcoming.length > 0 && (
-        <div className="p-4 bg-indigo-50 rounded-xl border-2 border-indigo-200">
-          <div className="flex items-center gap-2 mb-3">
-            <Calendar className="w-5 h-5 text-indigo-600" />
-            <h3 className="text-sm font-bold text-indigo-900 uppercase tracking-wide">
-              Próximas Revisões (7 dias)
-            </h3>
-          </div>
-          <div className="space-y-2">
-            {data.upcoming.map((review, index) => (
-              <div
-                key={index}
-                className="flex items-start gap-3 p-3 bg-white rounded-lg border border-indigo-200"
-              >
-                <Calendar className="w-5 h-5 text-indigo-600 flex-shrink-0 mt-0.5" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900">{review.tema}</p>
-                  <p className="text-xs text-gray-600 mt-0.5">{review.acao}</p>
-                  <div className="flex items-center gap-2 mt-1.5">
-                    <span className="text-xs text-indigo-700 font-medium">
-                      {review.dataAgendada}
-                    </span>
-                    <span className="text-xs font-bold text-indigo-800 bg-indigo-100 px-2 py-0.5 rounded-full">
-                      em {review.daysDiff} dia{review.daysDiff !== 1 ? 's' : ''}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Resumo Final */}
-      <div className="p-4 bg-gray-50 rounded-xl border-2 border-gray-200">
-        <div className="flex items-center gap-2 mb-2">
-          <BarChart3 className="w-5 h-5 text-gray-700" />
-          <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide">Resumo Geral</h3>
-        </div>
-        <div className="grid grid-cols-2 gap-2 text-xs">
-          <div className="flex justify-between">
-            <span className="text-gray-600">Revisões Ativas:</span>
-            <span className="font-bold text-gray-900">{data.allActiveReviews}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-gray-600">Próximos 7 dias:</span>
-            <span className="font-bold text-gray-900">{data.statistics.upcomingCount}</span>
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );

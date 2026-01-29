@@ -3,8 +3,10 @@ import { StudyForm } from './components/StudyForm';
 import { SimuladosForm } from './components/SimuladosForm';
 import { ConfigModal } from './components/ConfigModal';
 import { ChangeLogDisplay } from './components/ChangeLogDisplay';
+import { HojeView } from './components/HojeView';
+import { DashboardView } from './components/DashboardView';
 import { StudySession, SimuladoSession, AppStatus, ChangeLogEntry } from './types';
-import { Settings, GraduationCap, AlertCircle, BookOpen, FileText } from 'lucide-react';
+import { Settings, GraduationCap, AlertCircle, BookOpen, FileText, Calendar, BarChart3 } from 'lucide-react';
 
 // Lista exata de arquivos na pasta public/Fotos (47 fotos)
 const PHOTO_FILENAMES = [
@@ -57,13 +59,13 @@ const PHOTO_FILENAMES = [
   "PHOTO-2026-01-28-17-37-20.jpg"
 ];
 
-type TabType = 'temas' | 'simulados';
+type TabType = 'temas' | 'simulados' | 'hoje' | 'dashboard';
 
 const App: React.FC = () => {
   const [status, setStatus] = useState<AppStatus>(AppStatus.IDLE);
   const [sheetUrl, setSheetUrl] = useState<string>('');
   const [isConfigOpen, setIsConfigOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabType>('temas');
+  const [activeTab, setActiveTab] = useState<TabType>('hoje');
 
   // State to manage the active image source and fallback status
   const [currentImageSrc, setCurrentImageSrc] = useState<string>('');
@@ -239,22 +241,52 @@ const App: React.FC = () => {
         </div>
 
         {/* Tabs Navigation */}
-        <div className="bg-white px-4 sm:px-6 border-b border-gray-200">
-          <div className="flex gap-2">
+        <div className="bg-white px-2 sm:px-4 border-b border-gray-200">
+          <div className="flex gap-1 overflow-x-auto">
+            <button
+              onClick={() => {
+                setActiveTab('hoje');
+                resetForm();
+              }}
+              className={`
+                flex items-center gap-2 px-3 py-3 font-medium text-xs sm:text-sm transition-all border-b-2 whitespace-nowrap
+                ${activeTab === 'hoje'
+                  ? 'text-green-600 border-green-600'
+                  : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'}
+              `}
+            >
+              <Calendar className="w-4 h-4" />
+              Hoje
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab('dashboard');
+                resetForm();
+              }}
+              className={`
+                flex items-center gap-2 px-3 py-3 font-medium text-xs sm:text-sm transition-all border-b-2 whitespace-nowrap
+                ${activeTab === 'dashboard'
+                  ? 'text-orange-600 border-orange-600'
+                  : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'}
+              `}
+            >
+              <BarChart3 className="w-4 h-4" />
+              Dashboard
+            </button>
             <button
               onClick={() => {
                 setActiveTab('temas');
                 resetForm();
               }}
               className={`
-                flex items-center gap-2 px-4 py-3 font-medium text-sm transition-all border-b-2
+                flex items-center gap-2 px-3 py-3 font-medium text-xs sm:text-sm transition-all border-b-2 whitespace-nowrap
                 ${activeTab === 'temas'
                   ? 'text-blue-600 border-blue-600'
                   : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'}
               `}
             >
               <BookOpen className="w-4 h-4" />
-              Registro de Temas
+              Registrar
             </button>
             <button
               onClick={() => {
@@ -262,7 +294,7 @@ const App: React.FC = () => {
                 resetForm();
               }}
               className={`
-                flex items-center gap-2 px-4 py-3 font-medium text-sm transition-all border-b-2
+                flex items-center gap-2 px-3 py-3 font-medium text-xs sm:text-sm transition-all border-b-2 whitespace-nowrap
                 ${activeTab === 'simulados'
                   ? 'text-purple-600 border-purple-600'
                   : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'}
@@ -343,10 +375,32 @@ const App: React.FC = () => {
             </div>
           ) : (
             <>
-              {activeTab === 'temas' ? (
+              {activeTab === 'hoje' && sheetUrl && (
+                <HojeView sheetUrl={sheetUrl} />
+              )}
+              {activeTab === 'dashboard' && sheetUrl && (
+                <DashboardView sheetUrl={sheetUrl} />
+              )}
+              {activeTab === 'temas' && (
                 <StudyForm onSubmit={handleSubmit} status={status} />
-              ) : (
+              )}
+              {activeTab === 'simulados' && (
                 <SimuladosForm onSubmit={handleSubmit} status={status} />
+              )}
+              {(activeTab === 'hoje' || activeTab === 'dashboard') && !sheetUrl && (
+                <div className="text-center py-12">
+                  <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
+                  <h3 className="text-lg font-bold text-gray-800 mb-2">Configure sua planilha</h3>
+                  <p className="text-gray-600 text-sm mb-4">
+                    Para visualizar {activeTab === 'hoje' ? 'as revisões de hoje' : 'o dashboard'}, você precisa configurar a URL da planilha Google.
+                  </p>
+                  <button
+                    onClick={() => setIsConfigOpen(true)}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
+                  >
+                    Configurar Agora
+                  </button>
+                </div>
               )}
             </>
           )}
