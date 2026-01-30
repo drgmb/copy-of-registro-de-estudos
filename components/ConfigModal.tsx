@@ -1876,21 +1876,21 @@ function getDiario(ss) {
     }
 
     // Buscar dados da aba DIÁRIO
-    // Assumindo estrutura: Data | Tema | Ação | Semana
-    const data = diarioSheet.getRange(2, 1, lastRow - 1, 4).getValues();
+    // Estrutura: ID | Nome do Tema | Ação | Data | STATUS
+    const data = diarioSheet.getRange(2, 1, lastRow - 1, 5).getValues();
 
     const registros = [];
     for (let i = 0; i < data.length; i++) {
       const row = data[i];
-      if (!row[0] || !row[1]) continue; // Pular linhas vazias
+      if (!row[1] || !row[3]) continue; // Pular se não tem tema ou data
 
-      // Validar e converter data
+      // Validar e converter data (coluna D = índice 3)
       let dataISO;
       try {
-        if (row[0] instanceof Date) {
-          dataISO = row[0].toISOString();
+        if (row[3] instanceof Date) {
+          dataISO = row[3].toISOString();
         } else {
-          const dateObj = new Date(row[0]);
+          const dateObj = new Date(row[3]);
           if (isNaN(dateObj.getTime())) {
             continue; // Pular se data inválida
           }
@@ -1902,9 +1902,9 @@ function getDiario(ss) {
 
       registros.push({
         data: dataISO,
-        tema: row[1].toString(),
-        acao: row[2] ? row[2].toString() : 'Primeira vez',
-        semana: row[3] ? parseInt(row[3]) : null
+        tema: row[1].toString(), // Coluna B: Nome do Tema
+        acao: row[2] ? row[2].toString() : 'Primeira vez', // Coluna C: Ação
+        semana: null // Não tem coluna de semana nesta estrutura
       });
     }
 
@@ -1941,21 +1941,21 @@ function getAllStudySessions(ss) {
     }
 
     // Buscar dados da aba DATA ENTRY
-    // Assumindo estrutura: Data | Tema | Detalhes | Dificuldade | É Aula? | Questões? | Total | Corretas
-    const data = dataEntrySheet.getRange(2, 1, lastRow - 1, 8).getValues();
+    // Estrutura: ID | TEMA | DETALHES | DIFICULDADE | AULA | QUESTOES | TOTAL | ACERTOS | DATA
+    const data = dataEntrySheet.getRange(2, 1, lastRow - 1, 9).getValues();
 
     const sessions = [];
     for (let i = 0; i < data.length; i++) {
       const row = data[i];
-      if (!row[0] || !row[1]) continue; // Pular linhas vazias
+      if (!row[1] || !row[8]) continue; // Pular se não tem tema ou data
 
-      // Validar e converter data
+      // Validar e converter data (coluna I = índice 8)
       let dateISO;
       try {
-        if (row[0] instanceof Date) {
-          dateISO = row[0].toISOString();
+        if (row[8] instanceof Date) {
+          dateISO = row[8].toISOString();
         } else {
-          const dateObj = new Date(row[0]);
+          const dateObj = new Date(row[8]);
           if (isNaN(dateObj.getTime())) {
             continue; // Pular se data inválida
           }
@@ -1967,13 +1967,13 @@ function getAllStudySessions(ss) {
 
       sessions.push({
         date: dateISO,
-        topic: row[1].toString(),
-        details: row[2] ? row[2].toString() : '',
-        difficulty: row[3] ? row[3].toString() : '',
-        isClass: row[4] ? row[4].toString().toLowerCase() === 'sim' || row[4].toString().toLowerCase() === 'true' : false,
-        isQuestions: row[5] ? row[5].toString().toLowerCase() === 'sim' || row[5].toString().toLowerCase() === 'true' : false,
-        totalQuestions: row[6] ? parseInt(row[6]) : 0,
-        correctQuestions: row[7] ? parseInt(row[7]) : 0
+        topic: row[1].toString(), // Coluna B: TEMA
+        details: row[2] ? row[2].toString() : '', // Coluna C: DETALHES
+        difficulty: row[3] ? row[3].toString() : '', // Coluna D: DIFICULDADE
+        isClass: row[4] ? row[4].toString().toLowerCase() === 'sim' || row[4].toString().toLowerCase() === 'true' || row[4] === true : false, // Coluna E: AULA
+        hasQuestions: row[5] ? row[5].toString().toLowerCase() === 'sim' || row[5].toString().toLowerCase() === 'true' || row[5] === true : false, // Coluna F: QUESTOES
+        totalQuestions: row[6] ? parseInt(row[6]) : 0, // Coluna G: TOTAL
+        correctQuestions: row[7] ? parseInt(row[7]) : 0 // Coluna H: ACERTOS
       });
     }
 
