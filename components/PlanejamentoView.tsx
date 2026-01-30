@@ -15,12 +15,15 @@ interface PlanejamentoViewProps {
 }
 
 export const PlanejamentoView: React.FC<PlanejamentoViewProps> = ({ sheetUrl }) => {
-  // Mês fixo: Janeiro 2026
-  const mesAtual = useMemo(() => {
-    const janeiro2026 = new Date(2026, 0, 1); // 01 de Janeiro de 2026
-    janeiro2026.setHours(0, 0, 0, 0);
-    return janeiro2026;
-  }, []);
+  // Mês atual (navegável, mas limitado a 2026)
+  const [mesAtual, setMesAtual] = useState(() => {
+    const agora = new Date();
+    // Se estamos em 2026, usar o mês atual, senão usar Janeiro 2026
+    if (agora.getFullYear() === 2026) {
+      return new Date(2026, agora.getMonth(), 1);
+    }
+    return new Date(2026, 0, 1); // Janeiro 2026
+  });
 
   const [diaSelecionado, setDiaSelecionado] = useState<Date | null>(null);
   const [registrosDiario, setRegistrosDiario] = useState<RegistroDiario[]>([]);

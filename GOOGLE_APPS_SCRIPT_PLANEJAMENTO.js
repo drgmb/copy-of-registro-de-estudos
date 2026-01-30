@@ -68,6 +68,36 @@ function getDiario() {
 }
 
 /**
+ * FUNÇÃO AUXILIAR: Converter string YYYY-MM-DD para Date
+ */
+function converterDataISO(dataString) {
+  try {
+    // Extrair ano, mês e dia da string YYYY-MM-DD
+    var partes = dataString.split('-');
+    if (partes.length !== 3) {
+      throw new Error('Formato de data inválido: ' + dataString);
+    }
+
+    var ano = parseInt(partes[0]);
+    var mes = parseInt(partes[1]) - 1; // Mês começa em 0 no JavaScript
+    var dia = parseInt(partes[2]);
+
+    // Criar data no timezone do script
+    var dataObj = new Date(ano, mes, dia);
+
+    // Validar se a data é válida
+    if (isNaN(dataObj.getTime())) {
+      throw new Error('Data inválida: ' + dataString);
+    }
+
+    return dataObj;
+  } catch (error) {
+    Logger.log('❌ Erro ao converter data: ' + error.message);
+    throw error;
+  }
+}
+
+/**
  * FUNÇÃO 2: adicionarRegistroDiario
  * Adicionar novo registro ao DIÁRIO
  * Parâmetros: tema, acao, data
@@ -85,7 +115,7 @@ function adicionarRegistroDiario(tema, acao, data) {
     }
 
     // Converter string de data para objeto Date
-    var dataObj = new Date(data);
+    var dataObj = converterDataISO(data);
 
     // Adicionar nova linha ao final da planilha
     // Estrutura: Data | Tema | Ação | Semana
@@ -152,7 +182,7 @@ function editarDataRegistroDiario(tema, acao, dataAntiga, dataNova) {
             String(row[2]) === acao) {
 
           // Atualizar a data (coluna A, índice da linha é i+1 porque array começa em 0)
-          var novaDataObj = new Date(dataNova);
+          var novaDataObj = converterDataISO(dataNova);
           sheetDiario.getRange(i + 1, 1).setValue(novaDataObj);
 
           encontrado = true;
