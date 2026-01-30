@@ -36,6 +36,7 @@ export const CronogramaView: React.FC<CronogramaViewProps> = ({ sheetUrl }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
   const [recarregarFlag, setRecarregarFlag] = useState(0);
+  const [mostrarDebug, setMostrarDebug] = useState(true); // Debug visível por padrão
 
   // Filtros
   const [filtroCor, setFiltroCor] = useState<CorRelevancia | null>(null);
@@ -215,6 +216,57 @@ export const CronogramaView: React.FC<CronogramaViewProps> = ({ sheetUrl }) => {
             ></div>
           </div>
         </div>
+      )}
+
+      {/* Painel de Debug */}
+      {mostrarDebug && cronograma && (
+        <div className="p-4 bg-yellow-50 rounded-xl border-2 border-yellow-300">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-yellow-700" />
+              <h3 className="text-sm font-bold text-yellow-900 uppercase tracking-wide">
+                🔍 Painel de Debug
+              </h3>
+            </div>
+            <button
+              onClick={() => setMostrarDebug(false)}
+              className="text-yellow-700 hover:text-yellow-900"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <div className="space-y-2 text-xs font-mono">
+            <div className="p-2 bg-white rounded">
+              <strong>Total de Semanas:</strong> {cronograma.semanas.length}
+            </div>
+            <div className="p-2 bg-white rounded">
+              <strong>Temas Carregados:</strong> {cronograma.semanas.reduce((acc, s) => acc + s.temas.length, 0)}
+            </div>
+            <div className="p-2 bg-white rounded">
+              <strong>Temas Estudados:</strong> {cronograma.semanas.reduce((acc, s) => acc + s.temas.filter(t => t.estudado).length, 0)}
+            </div>
+            <div className="p-2 bg-white rounded">
+              <strong>Temas Migrados:</strong> {cronograma.semanas.reduce((acc, s) => acc + s.temas.filter(t => t.semanaAtual !== t.semanaOriginal).length, 0)}
+            </div>
+            <div className="p-2 bg-white rounded">
+              <strong>Última Atualização:</strong> {new Date(cronograma.ultimaAtualizacao).toLocaleString('pt-BR')}
+            </div>
+            <div className="p-2 bg-blue-50 rounded border border-blue-200">
+              <p className="text-blue-900 mb-1"><strong>💡 Verifique o Console (F12)</strong></p>
+              <p className="text-blue-700">Logs detalhados de processamento aparecem no console do navegador</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!mostrarDebug && (
+        <button
+          onClick={() => setMostrarDebug(true)}
+          className="w-full p-2 text-xs text-yellow-700 bg-yellow-50 hover:bg-yellow-100 rounded border border-yellow-200 font-medium"
+        >
+          🔍 Mostrar Painel de Debug
+        </button>
       )}
 
       {/* Filtros e Atualizar */}

@@ -30,10 +30,21 @@ export function calcularProgressoDeRegistros(
 ): Map<string, ProgressoTema> {
   const progressoPorTema = new Map<string, ProgressoTema>();
 
+  console.log('🔍 [DEBUG] Processando DATA ENTRY:', dataEntry.length, 'registros');
+  console.log('🔍 [DEBUG] Processando DIÁRIO:', diario.length, 'registros');
+
   // 1. Processar DATA ENTRY (registros reais de estudo)
-  dataEntry.forEach(session => {
+  const temasNaoEncontrados: string[] = [];
+  dataEntry.forEach((session, idx) => {
     const idTema = NOME_PARA_ID[session.topic];
-    if (!idTema) return; // Tema não encontrado no mapa
+
+    if (!idTema) {
+      temasNaoEncontrados.push(session.topic);
+      console.warn(`⚠️ Tema não encontrado no mapa: "${session.topic}" (registro ${idx + 1})`);
+      return;
+    }
+
+    console.log(`✅ Tema encontrado: "${session.topic}" -> ID: ${idTema}, Data: ${session.date}`);
 
     let progresso = progressoPorTema.get(idTema);
 
@@ -150,6 +161,8 @@ export function calcularProgressoDeRegistros(
 
   // 3. Calcular migração automática baseada nas datas de estudo
   // Importar TEMAS_POR_ID para pegar semanaOriginal
+  console.log('🔍 [DEBUG] Calculando migração automática para', progressoPorTema.size, 'temas');
+
   progressoPorTema.forEach((progresso, idTema) => {
     if (progresso.datasEstudos.length === 0) return;
 
@@ -172,6 +185,8 @@ export function calcularProgressoDeRegistros(
     inicioSemana1.setDate(hoje.getDate() - diasDesdeUltimoDomingo);
     inicioSemana1.setHours(0, 0, 0, 0);
 
+    console.log(`📅 Início da Semana 1: ${inicioSemana1.toISOString().split('T')[0]} (hoje: ${hoje.toISOString().split('T')[0]}, dia da semana: ${diaDaSemana})`);
+
     let semanaMaisRecente = semanaOriginal;
 
     progresso.datasEstudos.forEach(dataISO => {
@@ -187,12 +202,23 @@ export function calcularProgressoDeRegistros(
       // etc.
       const semanaData = Math.floor(diffDias / 7) + 1;
 
+      console.log(`  📍 Tema ID ${idTema} (${temaBase.nome}):`, {
+        dataEstudo: dataISO,
+        diffDias,
+        semanaCalculada: semanaData,
+        semanaOriginal,
+        precisaMigrar: semanaData !== semanaOriginal
+      });
+
       // Se a data está numa semana válida (1-30)
       if (semanaData >= 1 && semanaData <= 30) {
         // Migrar para a semana onde o tema foi estudado
         if (semanaData !== semanaOriginal) {
           semanaMaisRecente = semanaData;
+          console.log(`  🔄 MIGRAÇÃO: Tema "${temaBase.nome}" da semana ${semanaOriginal} → ${semanaData}`);
         }
+      } else {
+        console.warn(`  ⚠️ Semana inválida calculada: ${semanaData} para data ${dataISO}`);
       }
     });
 
@@ -219,6 +245,16 @@ export function calcularProgressoDeRegistros(
       progresso.semanaAtual = semanaOriginal;
     }
   });
+
+  // Resumo final
+  console.log('📊 [RESUMO] Processamento concluído:', {
+    temasComProgresso: progressoPorTema.size,
+    temasNaoEncontrados: temasNaoEncontrados.length > 0 ? temasNaoEncontrados : 'Nenhum'
+  });
+
+  if (temasNaoEncontrados.length > 0) {
+    console.warn('⚠️ Temas não encontrados no mapeamento:', temasNaoEncontrados);
+  }
 
   return progressoPorTema;
 }
