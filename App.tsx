@@ -5,8 +5,9 @@ import { ConfigModal } from './components/ConfigModal';
 import { ChangeLogDisplay } from './components/ChangeLogDisplay';
 import { CronogramaView } from './components/CronogramaView';
 import { HojeView } from './components/HojeView';
+import { PlanejamentoView } from './components/PlanejamentoView';
 import { StudySession, SimuladoSession, AppStatus, ChangeLogEntry, AtividadeDia } from './types';
-import { Settings, GraduationCap, AlertCircle, BookOpen, FileText, Calendar, Home } from 'lucide-react';
+import { Settings, GraduationCap, AlertCircle, BookOpen, FileText, Calendar, Home, CalendarDays } from 'lucide-react';
 
 // Lista exata de arquivos na pasta public/Fotos (47 fotos)
 const PHOTO_FILENAMES = [
@@ -59,7 +60,7 @@ const PHOTO_FILENAMES = [
   "PHOTO-2026-01-28-17-37-20.jpg"
 ];
 
-type TabType = 'temas' | 'simulados' | 'cronograma' | 'hoje';
+type TabType = 'temas' | 'simulados' | 'cronograma' | 'hoje' | 'planejamento';
 
 const App: React.FC = () => {
   const [status, setStatus] = useState<AppStatus>(AppStatus.IDLE);
@@ -321,6 +322,21 @@ const App: React.FC = () => {
               <Home className="w-4 h-4" />
               Hoje
             </button>
+            <button
+              onClick={() => {
+                setActiveTab('planejamento');
+                resetForm();
+              }}
+              className={`
+                flex items-center gap-2 px-3 py-3 font-medium text-xs sm:text-sm transition-all border-b-2 whitespace-nowrap
+                ${activeTab === 'planejamento'
+                  ? 'text-indigo-600 border-indigo-600'
+                  : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'}
+              `}
+            >
+              <CalendarDays className="w-4 h-4" />
+              Planejamento
+            </button>
           </div>
         </div>
 
@@ -412,6 +428,9 @@ const App: React.FC = () => {
                   onNavigateToCronograma={handleNavigateToCronograma}
                   onNavigateToRegistro={handleNavigateToRegistro}
                 />
+              )}
+              {activeTab === 'planejamento' && (
+                <PlanejamentoView sheetUrl={sheetUrl} />
               )}
             </>
           )}

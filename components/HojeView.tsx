@@ -183,33 +183,65 @@ export const HojeView: React.FC<HojeViewProps> = ({
           </div>
         </div>
 
-        {/* Cards de Resumo */}
+        {/* Cards de Resumo - Separados por Tipo */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
-          <div className="bg-white/70 p-4 rounded-lg text-center">
-            <CheckCircle className="w-6 h-6 text-green-600 mx-auto mb-2" />
-            <p className="text-xs text-gray-600 mb-1">Concluídos</p>
-            <p className="text-2xl font-bold text-green-700">
+          {/* Primeiro Contato */}
+          <div className="bg-purple-50/90 p-4 rounded-lg border-2 border-purple-200">
+            <BookOpen className="w-5 h-5 text-purple-600 mx-auto mb-2" />
+            <p className="text-xs text-purple-700 font-bold mb-1">📚 Primeiro Contato</p>
+            <p className="text-xl font-bold text-purple-900">
+              {estado.stats.primeiraVez.concluidas}/{estado.stats.primeiraVez.programadas}
+            </p>
+            <p className="text-xs text-purple-600">
+              {estado.stats.primeiraVez.programadas > 0
+                ? Math.round((estado.stats.primeiraVez.concluidas / estado.stats.primeiraVez.programadas) * 100)
+                : 0}%
+            </p>
+          </div>
+
+          {/* Revisões */}
+          <div className="bg-orange-50/90 p-4 rounded-lg border-2 border-orange-200">
+            <RefreshCw className="w-5 h-5 text-orange-600 mx-auto mb-2" />
+            <p className="text-xs text-orange-700 font-bold mb-1">🔄 Revisões</p>
+            <p className="text-xl font-bold text-orange-900">
+              {estado.stats.revisoes.concluidas}/{estado.stats.revisoes.programadas}
+            </p>
+            <p className="text-xs text-orange-600">
+              {estado.stats.revisoes.programadas > 0
+                ? Math.round((estado.stats.revisoes.concluidas / estado.stats.revisoes.programadas) * 100)
+                : 0}%
+            </p>
+          </div>
+
+          {/* Atrasados - Separados */}
+          <div className="bg-red-50/90 p-4 rounded-lg border-2 border-red-200">
+            <AlertCircleIcon className="w-5 h-5 text-red-600 mx-auto mb-2" />
+            <p className="text-xs text-red-700 font-bold mb-1">🔴 Atrasados</p>
+            <div className="flex justify-center gap-2">
+              <div className="text-center">
+                <p className="text-sm font-bold text-red-900">
+                  {estadoFiltrado.atrasados.filter(a => a.tipo === 'PRIMEIRA_VEZ').length}
+                </p>
+                <p className="text-[10px] text-red-600">1ª vez</p>
+              </div>
+              <div className="text-red-400">|</div>
+              <div className="text-center">
+                <p className="text-sm font-bold text-red-900">
+                  {estadoFiltrado.atrasados.filter(a => a.tipo === 'REVISAO').length}
+                </p>
+                <p className="text-[10px] text-red-600">Revisões</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Total Geral */}
+          <div className="bg-blue-50/90 p-4 rounded-lg border-2 border-blue-200">
+            <CheckCircle className="w-5 h-5 text-blue-600 mx-auto mb-2" />
+            <p className="text-xs text-blue-700 font-bold mb-1">📊 Total Geral</p>
+            <p className="text-xl font-bold text-blue-900">
               {estado.stats.totalRealizadas}/{estado.stats.totalProgramadas}
             </p>
-            <p className="text-xs text-gray-600">{estado.stats.taxaConclusao.toFixed(0)}%</p>
-          </div>
-
-          <div className="bg-white/70 p-4 rounded-lg text-center">
-            <Clock className="w-6 h-6 text-blue-600 mx-auto mb-2" />
-            <p className="text-xs text-gray-600 mb-1">Pendentes</p>
-            <p className="text-2xl font-bold text-blue-700">{estadoFiltrado.pendentes.length}</p>
-          </div>
-
-          <div className="bg-white/70 p-4 rounded-lg text-center">
-            <AlertCircleIcon className="w-6 h-6 text-red-600 mx-auto mb-2" />
-            <p className="text-xs text-gray-600 mb-1">Atrasados</p>
-            <p className="text-2xl font-bold text-red-700">{estadoFiltrado.atrasados.length}</p>
-          </div>
-
-          <div className="bg-white/70 p-4 rounded-lg text-center">
-            <AlertTriangle className="w-6 h-6 text-orange-600 mx-auto mb-2" />
-            <p className="text-xs text-gray-600 mb-1">Fora do Plano</p>
-            <p className="text-2xl font-bold text-orange-700">{estadoFiltrado.foraPrograma.length}</p>
+            <p className="text-xs text-blue-600">{estado.stats.taxaConclusao.toFixed(0)}%</p>
           </div>
         </div>
 
@@ -221,19 +253,66 @@ export const HojeView: React.FC<HojeViewProps> = ({
           ></div>
         </div>
 
-        {/* Breakdown por tipo */}
-        <div className="mt-4 flex justify-center gap-6 text-sm">
-          <div className="flex items-center gap-2">
-            <BookOpen className="w-4 h-4 text-purple-600" />
-            <span className="text-gray-700">
-              Primeira vez: <strong>{estado.stats.primeiraVez.concluidas}/{estado.stats.primeiraVez.programadas}</strong>
-            </span>
+        {/* Contadores Detalhados */}
+        <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
+          {/* Primeiro Contato Detalhado */}
+          <div className="bg-purple-50 p-3 rounded-lg border border-purple-200">
+            <div className="flex items-center gap-2 mb-2">
+              <BookOpen className="w-4 h-4 text-purple-600" />
+              <span className="text-xs font-bold text-purple-900">PRIMEIRO CONTATO</span>
+            </div>
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs">
+                <span className="text-purple-700">Programados:</span>
+                <strong className="text-purple-900">{estado.stats.primeiraVez.programadas}</strong>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-purple-700">Concluídos:</span>
+                <strong className="text-green-700">{estado.stats.primeiraVez.concluidas}</strong>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-purple-700">Pendentes:</span>
+                <strong className="text-blue-700">
+                  {estadoFiltrado.pendentes.filter(p => p.tipo === 'PRIMEIRA_VEZ').length}
+                </strong>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-purple-700">Atrasados:</span>
+                <strong className="text-red-700">
+                  {estadoFiltrado.atrasados.filter(a => a.tipo === 'PRIMEIRA_VEZ').length}
+                </strong>
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <RefreshCw className="w-4 h-4 text-orange-600" />
-            <span className="text-gray-700">
-              Revisões: <strong>{estado.stats.revisoes.concluidas}/{estado.stats.revisoes.programadas}</strong>
-            </span>
+
+          {/* Revisões Detalhado */}
+          <div className="bg-orange-50 p-3 rounded-lg border border-orange-200">
+            <div className="flex items-center gap-2 mb-2">
+              <RefreshCw className="w-4 h-4 text-orange-600" />
+              <span className="text-xs font-bold text-orange-900">REVISÕES</span>
+            </div>
+            <div className="space-y-1">
+              <div className="flex justify-between text-xs">
+                <span className="text-orange-700">Programadas:</span>
+                <strong className="text-orange-900">{estado.stats.revisoes.programadas}</strong>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-orange-700">Concluídas:</span>
+                <strong className="text-green-700">{estado.stats.revisoes.concluidas}</strong>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-orange-700">Pendentes:</span>
+                <strong className="text-blue-700">
+                  {estadoFiltrado.pendentes.filter(p => p.tipo === 'REVISAO').length}
+                </strong>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-orange-700">Atrasadas:</span>
+                <strong className="text-red-700">
+                  {estadoFiltrado.atrasados.filter(a => a.tipo === 'REVISAO').length}
+                </strong>
+              </div>
+            </div>
           </div>
         </div>
       </div>
