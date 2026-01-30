@@ -80,10 +80,44 @@ function criarDataLocal(isoString: string): Date {
 // Mapear ação do diário para TipoAtividade
 function mapearTipoAtividade(acao: string): TipoAtividade {
   const acaoLower = acao.toLowerCase();
-  if (acaoLower.includes('primeira') || acaoLower.includes('1')) {
+
+  // Normalizar: remover acentos e espaços extras para comparação
+  const acaoNormalizada = acaoLower
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // Remove acentos
+    .trim();
+
+  // Detectar "Primeira Vez" / "Primeiro Contato"
+  if (
+    acaoNormalizada.includes('primeira') ||
+    acaoNormalizada.includes('primeiro') ||
+    acaoNormalizada.includes('1')
+  ) {
     return 'PRIMEIRA_VEZ';
   }
+
+  // Detectar "Revisão" / "Revisao"
+  if (acaoNormalizada.includes('revisao') || acaoNormalizada.includes('revis')) {
+    return 'REVISAO';
+  }
+
+  // Default: se não conseguir determinar, assumir REVISAO
   return 'REVISAO';
+}
+
+// Determinar tipo de atividade do DATA ENTRY (usando details + isClass como fallback)
+function mapearTipoDataEntry(session: StudySession): TipoAtividade {
+  // Prioridade 1: Usar o campo 'details' se existir
+  if (session.details && session.details.trim()) {
+    const tipo = mapearTipoAtividade(session.details);
+    console.log(`    🔍 Tipo determinado por details: "${session.details}" → ${tipo}`);
+    return tipo;
+  }
+
+  // Prioridade 2: Usar isClass como fallback
+  const tipo = session.isClass ? 'PRIMEIRA_VEZ' : 'REVISAO';
+  console.log(`    🔍 Tipo determinado por isClass: ${session.isClass} → ${tipo}`);
+  return tipo;
 }
 
 // Extrair número da revisão se aplicável
@@ -115,7 +149,7 @@ function criarAtividade(
   const tipo = diario
     ? mapearTipoAtividade(diario.acao)
     : dataEntry
-    ? (dataEntry.isClass ? 'PRIMEIRA_VEZ' : 'REVISAO')
+    ? mapearTipoDataEntry(dataEntry)
     : 'PRIMEIRA_VEZ';
 
   const numeroRevisao = diario ? extrairNumeroRevisao(diario.acao) : undefined;
@@ -190,7 +224,9 @@ export function processarAtividadesDia(
     const isHoje = mesmaData(dataReg, hoje);
 
     if (isHoje) {
-      console.log('  ✅ Realizado hoje:', reg.topic, '-', (reg.isClass ? 'Primeira vez' : 'Revisão'), '-', reg.date);
+      const tipoReal = mapearTipoDataEntry(reg);
+      console.log('  ✅ Realizado hoje:', reg.topic, '-', tipoReal, '-', reg.date);
+      console.log('    📝 Details:', reg.details, '| isClass:', reg.isClass);
     }
 
     return isHoje;
@@ -209,8 +245,7 @@ export function processarAtividadesDia(
     const foiConcluida = dataEntryCompleto.some(
       (de) =>
         de.topic === reg.tema &&
-        mapearTipoAtividade(reg.acao) ===
-          (de.isClass ? 'PRIMEIRA_VEZ' : 'REVISAO')
+        mapearTipoAtividade(reg.acao) === mapearTipoDataEntry(de)
     );
 
     if (!foiConcluida) {
@@ -232,8 +267,15 @@ export function processarAtividadesDia(
   for (const prog of programadosHoje) {
     const tipo = mapearTipoAtividade(prog.acao);
     const realizado = realizadosHoje.find(
-      (r) => r.topic === prog.tema && (r.isClass ? 'PRIMEIRA_VEZ' : 'REVISAO') === tipo
+      (r) => r.topic === prog.tema && mapearTipoDataEntry(r) === tipo
     );
+
+    console.log(`  🔄 Processando programado: ${prog.tema} - ${prog.acao} (tipo: ${tipo})`);
+    if (realizado) {
+      console.log(`    ✅ Match encontrado em DATA ENTRY!`);
+    } else {
+      console.log(`    ⏳ Não realizado ainda (vai para Pendentes)`);
+    }
 
     if (realizado) {
       concluidos.push(criarAtividade(prog, realizado, 'CONCLUIDO'));
@@ -244,10 +286,15 @@ export function processarAtividadesDia(
 
   // 5. Processar realizados que não estavam programados para hoje
   for (const real of realizadosHoje) {
-    const tipo = real.isClass ? 'PRIMEIRA_VEZ' : 'REVISAO';
+    const tipo = mapearTipoDataEntry(real);
     const programadoHoje = programadosHoje.find(
       (p) => p.tema === real.topic && mapearTipoAtividade(p.acao) === tipo
     );
+
+    console.log(`  🔍 Verificando realizado: ${real.topic} - ${tipo}`);
+    if (programadoHoje) {
+      console.log(`    ✅ Já processado como concluído`);
+    }
 
     if (!programadoHoje) {
       // Verificar se estava programado para outra data
