@@ -1,5 +1,6 @@
 import { TemaEstudo, SemanaEstudo, CronogramaState, CorRelevancia } from '../types';
 import { TEMAS_CORES } from '../temasColors';
+import { getFromGoogleScript, postToGoogleScript } from './apiProxy';
 
 // Constantes
 const TOTAL_SEMANAS = 30;
@@ -189,8 +190,7 @@ export async function carregarCronograma(sheetUrl: string): Promise<CronogramaSt
   if (!sheetUrl) return null;
 
   try {
-    const response = await fetch(`${sheetUrl}?action=getCronogramaCompleto`);
-    const result = await response.json();
+    const result = await getFromGoogleScript(sheetUrl, 'getCronogramaCompleto');
 
     if (result.status === 'error') {
       console.error('Erro ao carregar cronograma:', result.message);
@@ -215,16 +215,7 @@ export async function salvarCronograma(
   }
 
   try {
-    const formData = new URLSearchParams();
-    formData.append('action', 'saveCronograma');
-    formData.append('data', JSON.stringify(state));
-
-    const response = await fetch(sheetUrl, {
-      method: 'POST',
-      body: formData
-    });
-
-    const result = await response.json();
+    const result = await postToGoogleScript(sheetUrl, 'saveCronograma', JSON.stringify(state));
 
     if (result.status === 'error') {
       console.error('Erro ao salvar cronograma:', result.message);
