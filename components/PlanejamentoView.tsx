@@ -63,8 +63,11 @@ export const PlanejamentoView: React.FC<PlanejamentoViewProps> = ({ sheetUrl }) 
 
         const data = await response.json();
 
-        if (data.status === 'success' && Array.isArray(data.diario)) {
-          setRegistrosDiario(data.diario);
+        // Aceitar tanto 'diario' quanto 'data' para compatibilidade
+        const registros = data.diario || data.data;
+
+        if (data.status === 'success' && Array.isArray(registros)) {
+          setRegistrosDiario(registros);
         } else {
           throw new Error(data.message || 'Formato de resposta inválido');
         }
@@ -148,8 +151,11 @@ export const PlanejamentoView: React.FC<PlanejamentoViewProps> = ({ sheetUrl }) 
 
           const data = await response.json();
 
-          if (data.status === 'success' && Array.isArray(data.diario)) {
-            setRegistrosDiario(data.diario);
+          // Aceitar tanto 'diario' quanto 'data' para compatibilidade
+          const registros = data.diario || data.data;
+
+          if (data.status === 'success' && Array.isArray(registros)) {
+            setRegistrosDiario(registros);
           }
         } catch (err) {
           console.error('Erro ao recarregar DIÁRIO:', err);

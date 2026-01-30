@@ -51,9 +51,11 @@ function getDiario() {
 
     Logger.log('✅ getDiario: ' + diario.length + ' registros encontrados');
 
+    // Retornar em ambos os formatos para compatibilidade
     return ContentService.createTextOutput(JSON.stringify({
       status: 'success',
-      diario: diario
+      diario: diario,
+      data: diario  // Compatibilidade com versões antigas
     })).setMimeType(ContentService.MimeType.JSON);
 
   } catch (error) {
