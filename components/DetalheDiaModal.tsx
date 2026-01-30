@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { X, Plus, Calendar, BookOpen, RefreshCw, Trash2, Edit2, Save, Loader2 } from 'lucide-react';
+import { X, Plus, Calendar, BookOpen, RefreshCw, Trash2, Edit2, Save, Loader2, CheckCircle, AlertTriangle } from 'lucide-react';
 
 interface RegistroDiario {
   data: string;
@@ -43,6 +43,11 @@ export const DetalheDiaModal: React.FC<DetalheDiaModalProps> = ({
   const [editando, setEditando] = useState<{ [key: string]: string }>({});
   const [salvando, setSalvando] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<{ show: boolean; registro: RegistroDiario | null }>({
+    show: false,
+    registro: null
+  });
 
   const hoje = useMemo(() => {
     const now = new Date();
@@ -127,6 +132,8 @@ export const DetalheDiaModal: React.FC<DetalheDiaModalProps> = ({
         setNovoTema('');
         setNovaData(data.toISOString().split('T')[0]);
         setModoAdicionar(false);
+        setSuccessMessage(`✅ ${novoTipo === 'tema' ? 'Tema' : 'Revisão'} adicionado com sucesso!`);
+        setTimeout(() => setSuccessMessage(null), 3000);
         onAtualizar();
       } else {
         throw new Error(result.message || 'Erro ao adicionar registro');
@@ -178,6 +185,8 @@ export const DetalheDiaModal: React.FC<DetalheDiaModalProps> = ({
       if (result.status === 'success') {
         delete editando[key];
         setEditando({ ...editando });
+        setSuccessMessage('✅ Data alterada com sucesso!');
+        setTimeout(() => setSuccessMessage(null), 3000);
         onAtualizar();
       } else {
         throw new Error(result.message || 'Erro ao editar registro');
@@ -189,11 +198,15 @@ export const DetalheDiaModal: React.FC<DetalheDiaModalProps> = ({
     }
   };
 
-  const handleRemoverRegistro = async (registro: RegistroDiario) => {
-    if (!confirm(`Remover "${registro.tema}" de ${registro.data.split('T')[0]}?`)) {
-      return;
-    }
+  const handleRemoverRegistro = (registro: RegistroDiario) => {
+    setConfirmDelete({ show: true, registro });
+  };
 
+  const confirmarRemocao = async () => {
+    if (!confirmDelete.registro) return;
+
+    const registro = confirmDelete.registro;
+    setConfirmDelete({ show: false, registro: null });
     setSalvando(true);
     setError(null);
 
@@ -212,6 +225,8 @@ export const DetalheDiaModal: React.FC<DetalheDiaModalProps> = ({
       const result = await response.json();
 
       if (result.status === 'success') {
+        setSuccessMessage('✅ Registro removido com sucesso!');
+        setTimeout(() => setSuccessMessage(null), 3000);
         onAtualizar();
       } else {
         throw new Error(result.message || 'Erro ao remover registro');
@@ -221,6 +236,10 @@ export const DetalheDiaModal: React.FC<DetalheDiaModalProps> = ({
     } finally {
       setSalvando(false);
     }
+  };
+
+  const cancelarRemocao = () => {
+    setConfirmDelete({ show: false, registro: null });
   };
 
   return (
@@ -245,8 +264,16 @@ export const DetalheDiaModal: React.FC<DetalheDiaModalProps> = ({
         {/* Conteúdo */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6">
           {error && (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-700 flex items-center gap-2">
+              <AlertTriangle className="w-4 h-4" />
               {error}
+            </div>
+          )}
+
+          {successMessage && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-3 text-sm text-green-700 flex items-center gap-2 animate-in slide-in-from-top duration-300">
+              <CheckCircle className="w-4 h-4" />
+              {successMessage}
             </div>
           )}
 
@@ -529,6 +556,66 @@ export const DetalheDiaModal: React.FC<DetalheDiaModalProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Modal de Confirmação de Exclusão */}
+      {confirmDelete.show && confirmDelete.registro && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 animate-in zoom-in duration-200">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-3 bg-red-100 rounded-full">
+                <AlertTriangle className="w-6 h-6 text-red-600" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-gray-900">Confirmar Remoção</h3>
+                <p className="text-sm text-gray-600">Esta ação não pode ser desfeita</p>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-4 mb-4">
+              <p className="text-sm text-gray-700 mb-2">
+                <strong>Tema:</strong> {confirmDelete.registro.tema}
+              </p>
+              <p className="text-sm text-gray-700 mb-2">
+                <strong>Tipo:</strong> {confirmDelete.registro.acao}
+              </p>
+              <p className="text-sm text-gray-700">
+                <strong>Data:</strong> {confirmDelete.registro.data.split('T')[0]}
+              </p>
+            </div>
+
+            <p className="text-sm text-gray-600 mb-6">
+              Tem certeza que deseja remover este registro do DIÁRIO?
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={cancelarRemocao}
+                disabled={salvando}
+                className="flex-1 py-2 px-4 bg-gray-200 text-gray-700 rounded-lg font-medium hover:bg-gray-300 transition-colors disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={confirmarRemocao}
+                disabled={salvando}
+                className="flex-1 py-2 px-4 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {salvando ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Removendo...
+                  </>
+                ) : (
+                  <>
+                    <Trash2 className="w-4 h-4" />
+                    Sim, Remover
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

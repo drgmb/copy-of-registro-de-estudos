@@ -15,30 +15,23 @@ interface PlanejamentoViewProps {
 }
 
 export const PlanejamentoView: React.FC<PlanejamentoViewProps> = ({ sheetUrl }) => {
-  const [mesAtual, setMesAtual] = useState<Date>(() => {
-    const now = new Date();
-    now.setDate(1); // Primeiro dia do mês
-    now.setHours(0, 0, 0, 0);
-    return now;
-  });
+  // Mês fixo: Janeiro 2026
+  const mesAtual = useMemo(() => {
+    const janeiro2026 = new Date(2026, 0, 1); // 01 de Janeiro de 2026
+    janeiro2026.setHours(0, 0, 0, 0);
+    return janeiro2026;
+  }, []);
 
   const [diaSelecionado, setDiaSelecionado] = useState<Date | null>(null);
   const [registrosDiario, setRegistrosDiario] = useState<RegistroDiario[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Data de início do cronograma (guardada no localStorage ou padrão)
+  // Data de início do cronograma: 25 de Janeiro 2026 (início da Semana 1)
   const dataInicioCronograma = useMemo(() => {
-    const saved = localStorage.getItem('dataInicioCronograma');
-    if (saved) {
-      return new Date(saved);
-    }
-    // Padrão: 30 semanas atrás de hoje
-    const hoje = new Date();
-    const inicioDefault = new Date(hoje);
-    inicioDefault.setDate(hoje.getDate() - (30 * 7));
-    inicioDefault.setHours(0, 0, 0, 0);
-    return inicioDefault;
+    const inicioS1 = new Date(2026, 0, 25); // 25 de Janeiro de 2026
+    inicioS1.setHours(0, 0, 0, 0);
+    return inicioS1;
   }, []);
 
   // Fetch data from DIÁRIO
@@ -113,22 +106,6 @@ export const PlanejamentoView: React.FC<PlanejamentoViewProps> = ({ sheetUrl }) 
 
     return map;
   }, [registrosDiario]);
-
-  const handleMesAnterior = () => {
-    setMesAtual((prev) => {
-      const novo = new Date(prev);
-      novo.setMonth(novo.getMonth() - 1);
-      return novo;
-    });
-  };
-
-  const handleProximoMes = () => {
-    setMesAtual((prev) => {
-      const novo = new Date(prev);
-      novo.setMonth(novo.getMonth() + 1);
-      return novo;
-    });
-  };
 
   const handleDiaClick = (data: Date) => {
     setDiaSelecionado(data);
@@ -227,8 +204,6 @@ export const PlanejamentoView: React.FC<PlanejamentoViewProps> = ({ sheetUrl }) 
       <CalendarioMensal
         mesAtual={mesAtual}
         onDiaClick={handleDiaClick}
-        onMesAnterior={handleMesAnterior}
-        onProximoMes={handleProximoMes}
         diasComAtividades={diasComAtividades}
         dataInicioCronograma={dataInicioCronograma}
       />

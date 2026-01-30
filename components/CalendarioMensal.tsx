@@ -1,5 +1,4 @@
 import React, { useMemo } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface DiaCalendario {
   data: Date;
@@ -12,19 +11,15 @@ interface DiaCalendario {
 }
 
 interface CalendarioMensalProps {
-  mesAtual: Date; // Data que representa o mês a ser exibido
+  mesAtual: Date; // Data que representa o mês a ser exibido (fixo: Janeiro 2026)
   onDiaClick: (data: Date) => void;
-  onMesAnterior: () => void;
-  onProximoMes: () => void;
   diasComAtividades?: { [dataISO: string]: { temas: number; revisoes: number } };
-  dataInicioCronograma: Date; // Data de início do cronograma (semana 1)
+  dataInicioCronograma: Date; // Data de início do cronograma (semana 1: 25/01/2026)
 }
 
 export const CalendarioMensal: React.FC<CalendarioMensalProps> = ({
   mesAtual,
   onDiaClick,
-  onMesAnterior,
-  onProximoMes,
   diasComAtividades = {},
   dataInicioCronograma,
 }) => {
@@ -35,10 +30,19 @@ export const CalendarioMensal: React.FC<CalendarioMensalProps> = ({
   }, []);
 
   // Calcular número da semana do cronograma (1-30)
+  // S1 = 25 a 31 de Janeiro 2026
   const calcularSemanaCronograma = (data: Date): number => {
-    const diffMs = data.getTime() - dataInicioCronograma.getTime();
+    // Data de início da Semana 1: 25 de Janeiro de 2026
+    const inicioS1 = new Date(2026, 0, 25); // Mês 0 = Janeiro
+    inicioS1.setHours(0, 0, 0, 0);
+
+    const diffMs = data.getTime() - inicioS1.getTime();
     const diffDias = Math.floor(diffMs / (1000 * 60 * 60 * 24));
     const semana = Math.floor(diffDias / 7) + 1;
+
+    // Se for antes de 25/01, não tem semana definida
+    if (diffDias < 0) return 0;
+
     return Math.max(1, Math.min(30, semana)); // Clamp entre 1 e 30
   };
 
@@ -122,29 +126,12 @@ export const CalendarioMensal: React.FC<CalendarioMensalProps> = ({
 
   return (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-      {/* Header - Navegação do mês */}
-      <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 px-4 py-3 flex items-center justify-between">
-        <button
-          onClick={onMesAnterior}
-          className="p-1.5 rounded-lg hover:bg-white/20 transition-colors text-white"
-          title="Mês anterior"
-        >
-          <ChevronLeft className="w-5 h-5" />
-        </button>
-
+      {/* Header - Mês fixo */}
+      <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 px-4 py-4 flex items-center justify-center">
         <div className="text-center text-white">
-          <h2 className="text-lg font-bold">
-            {nomesMeses[mesAtual.getMonth()]} {mesAtual.getFullYear()}
-          </h2>
+          <h2 className="text-lg font-bold">Janeiro 2026</h2>
+          <p className="text-xs text-indigo-100 mt-1">Semanas 1 a 30 do Cronograma</p>
         </div>
-
-        <button
-          onClick={onProximoMes}
-          className="p-1.5 rounded-lg hover:bg-white/20 transition-colors text-white"
-          title="Próximo mês"
-        >
-          <ChevronRight className="w-5 h-5" />
-        </button>
       </div>
 
       {/* Dias da semana */}
@@ -194,9 +181,11 @@ export const CalendarioMensal: React.FC<CalendarioMensalProps> = ({
               </span>
 
               {/* Badge de semana do cronograma */}
-              <span className="text-[9px] text-gray-400 font-medium mb-1">
-                S{dia.semana}
-              </span>
+              {dia.semana > 0 && (
+                <span className="text-[9px] text-gray-400 font-medium mb-1">
+                  S{dia.semana}
+                </span>
+              )}
 
               {/* Indicadores de atividades */}
               <div className="flex gap-0.5 mt-auto">
