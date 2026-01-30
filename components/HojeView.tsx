@@ -11,7 +11,9 @@ import {
   FileText,
   Loader2,
   Filter,
-  X
+  X,
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react';
 import {
   AtividadeDia,
@@ -30,7 +32,7 @@ import { COLOR_STYLES } from '../temasCentralizados';
 
 interface HojeViewProps {
   sheetUrl: string;
-  onNavigateToCronograma?: (temaId: string) => void;
+  onNavigateToCronograma?: (temaNome: string) => void;
   onNavigateToRegistro?: (atividade: AtividadeDia) => void;
 }
 
@@ -46,6 +48,28 @@ export const HojeView: React.FC<HojeViewProps> = ({
   // Filtros
   const [filtroTipo, setFiltroTipo] = useState<TipoAtividade | null>(null);
   const [filtroCor, setFiltroCor] = useState<CorRelevancia | null>(null);
+
+  // Estado de colapso das seções (apenas "Pendentes" aberto por padrão)
+  const [secaoAberta, setSecaoAberta] = useState<{
+    concluidos: boolean;
+    pendentes: boolean;
+    atrasados: boolean;
+    foraPrograma: boolean;
+    temasVistosHoje: boolean;
+  }>({
+    concluidos: false,
+    pendentes: true, // Apenas pendentes aberto por padrão
+    atrasados: false,
+    foraPrograma: false,
+    temasVistosHoje: false
+  });
+
+  const toggleSecao = (secao: keyof typeof secaoAberta) => {
+    setSecaoAberta(prev => ({
+      ...prev,
+      [secao]: !prev[secao]
+    }));
+  };
 
   // Carregar dados
   useEffect(() => {
@@ -94,7 +118,8 @@ export const HojeView: React.FC<HojeViewProps> = ({
       concluidos: aplicarFiltros(estado.concluidos),
       pendentes: aplicarFiltros(estado.pendentes),
       atrasados: aplicarFiltros(estado.atrasados),
-      foraPrograma: aplicarFiltros(estado.foraPrograma)
+      foraPrograma: aplicarFiltros(estado.foraPrograma),
+      temasVistosHoje: aplicarFiltros(estado.temasVistosHoje)
     };
   }, [estado, filtroTipo, filtroCor]);
 
@@ -273,6 +298,30 @@ export const HojeView: React.FC<HojeViewProps> = ({
 
       {/* Seções de Atividades */}
       <div className="space-y-4">
+        {/* Pendentes - Sempre aberto por padrão */}
+        <SecaoAtividades
+          titulo="⏳ PENDENTES HOJE"
+          atividades={estadoFiltrado.pendentes}
+          tipo="pendente"
+          onDetalhes={onNavigateToCronograma}
+          onRegistrar={onNavigateToRegistro}
+          isOpen={secaoAberta.pendentes}
+          onToggle={() => toggleSecao('pendentes')}
+        />
+
+        {/* Temas Vistos Hoje */}
+        {estadoFiltrado.temasVistosHoje.length > 0 && (
+          <SecaoAtividades
+            titulo="📚 TEMAS VISTOS HOJE (Primeiro Contato)"
+            atividades={estadoFiltrado.temasVistosHoje}
+            tipo="temasVistosHoje"
+            onDetalhes={onNavigateToCronograma}
+            onRegistrar={onNavigateToRegistro}
+            isOpen={secaoAberta.temasVistosHoje}
+            onToggle={() => toggleSecao('temasVistosHoje')}
+          />
+        )}
+
         {/* Concluídos */}
         <SecaoAtividades
           titulo="✅ CONCLUÍDOS HOJE"
@@ -280,15 +329,8 @@ export const HojeView: React.FC<HojeViewProps> = ({
           tipo="concluido"
           onDetalhes={onNavigateToCronograma}
           onRegistrar={onNavigateToRegistro}
-        />
-
-        {/* Pendentes */}
-        <SecaoAtividades
-          titulo="⏳ PENDENTES HOJE"
-          atividades={estadoFiltrado.pendentes}
-          tipo="pendente"
-          onDetalhes={onNavigateToCronograma}
-          onRegistrar={onNavigateToRegistro}
+          isOpen={secaoAberta.concluidos}
+          onToggle={() => toggleSecao('concluidos')}
         />
 
         {/* Atrasados */}
@@ -299,17 +341,21 @@ export const HojeView: React.FC<HojeViewProps> = ({
             tipo="atrasado"
             onDetalhes={onNavigateToCronograma}
             onRegistrar={onNavigateToRegistro}
+            isOpen={secaoAberta.atrasados}
+            onToggle={() => toggleSecao('atrasados')}
           />
         )}
 
-        {/* Fora do Programado */}
+        {/* Fora do Programado - Apenas Revisões */}
         {estadoFiltrado.foraPrograma.length > 0 && (
           <SecaoAtividades
-            titulo="⚠️ FORA DO PROGRAMADO"
+            titulo="⚠️ FORA DO PROGRAMADO (Revisões Não Agendadas)"
             atividades={estadoFiltrado.foraPrograma}
             tipo="fora"
             onDetalhes={onNavigateToCronograma}
             onRegistrar={onNavigateToRegistro}
+            isOpen={secaoAberta.foraPrograma}
+            onToggle={() => toggleSecao('foraPrograma')}
           />
         )}
       </div>
@@ -321,9 +367,11 @@ export const HojeView: React.FC<HojeViewProps> = ({
 interface SecaoAtividadesProps {
   titulo: string;
   atividades: AtividadeDia[];
-  tipo: 'concluido' | 'pendente' | 'atrasado' | 'fora';
-  onDetalhes?: (temaId: string) => void;
+  tipo: 'concluido' | 'pendente' | 'atrasado' | 'fora' | 'temasVistosHoje';
+  onDetalhes?: (temaNome: string) => void;
   onRegistrar?: (atividade: AtividadeDia) => void;
+  isOpen: boolean;
+  onToggle: () => void;
 }
 
 const SecaoAtividades: React.FC<SecaoAtividadesProps> = ({
@@ -331,72 +379,90 @@ const SecaoAtividades: React.FC<SecaoAtividadesProps> = ({
   atividades,
   tipo,
   onDetalhes,
-  onRegistrar
+  onRegistrar,
+  isOpen,
+  onToggle
 }) => {
   // Separar por tipo de atividade
   const primeiraVez = atividades.filter(a => a.tipo === 'PRIMEIRA_VEZ');
   const revisoes = atividades.filter(a => a.tipo === 'REVISAO');
 
-  if (atividades.length === 0) {
-    return (
-      <div className="p-4 bg-gray-50 rounded-xl border-2 border-gray-200">
-        <h3 className="text-sm font-bold text-gray-700 mb-2">{titulo} (0)</h3>
-        <p className="text-sm text-gray-500 text-center py-4">
-          {tipo === 'concluido' && '🎉 Continue assim!'}
-          {tipo === 'pendente' && '✅ Tudo concluído!'}
-          {tipo === 'atrasado' && '✅ Você está em dia!'}
-          {tipo === 'fora' && '✅ Tudo conforme o planejado!'}
-        </p>
-      </div>
-    );
-  }
+  const isEmpty = atividades.length === 0;
 
   return (
     <div className="p-4 bg-white rounded-xl border-2 border-gray-200">
-      <h3 className="text-sm font-bold text-gray-900 mb-4">
-        {titulo} ({atividades.length})
-      </h3>
+      {/* Header clicável para expandir/colapsar */}
+      <button
+        onClick={onToggle}
+        className="w-full flex items-center justify-between text-left hover:bg-gray-50 transition-colors rounded-lg p-2 -m-2"
+      >
+        <h3 className="text-sm font-bold text-gray-900 flex items-center gap-2">
+          {titulo} ({atividades.length})
+        </h3>
+        <div className="flex items-center gap-2">
+          {isEmpty && (
+            <span className="text-xs text-green-600 font-medium">
+              {tipo === 'concluido' && '🎉'}
+              {tipo === 'pendente' && '✅ Tudo concluído!'}
+              {tipo === 'atrasado' && '✅ Em dia!'}
+              {tipo === 'fora' && '✅ Tudo ok!'}
+              {tipo === 'temasVistosHoje' && ''}
+            </span>
+          )}
+          {isOpen ? (
+            <ChevronDown className="w-5 h-5 text-gray-600" />
+          ) : (
+            <ChevronRight className="w-5 h-5 text-gray-600" />
+          )}
+        </div>
+      </button>
 
-      {/* Breakdown por tipo */}
-      <div className="space-y-4">
-        {primeiraVez.length > 0 && (
-          <div>
-            <h4 className="text-xs font-bold text-purple-700 mb-2 flex items-center gap-2">
-              <BookOpen className="w-3 h-3" />
-              📚 Primeira vez ({primeiraVez.length})
-            </h4>
-            <div className="space-y-2">
-              {primeiraVez.map(atividade => (
-                <AtividadeCard
-                  key={atividade.id}
-                  atividade={atividade}
-                  onDetalhes={onDetalhes}
-                  onRegistrar={onRegistrar}
-                />
-              ))}
-            </div>
-          </div>
-        )}
+      {/* Conteúdo colapsável */}
+      {isOpen && !isEmpty && (
+        <div className="mt-4">
 
-        {revisoes.length > 0 && (
-          <div>
-            <h4 className="text-xs font-bold text-orange-700 mb-2 flex items-center gap-2">
-              <RefreshCw className="w-3 h-3" />
-              🔄 Revisões ({revisoes.length})
-            </h4>
-            <div className="space-y-2">
-              {revisoes.map(atividade => (
-                <AtividadeCard
-                  key={atividade.id}
-                  atividade={atividade}
-                  onDetalhes={onDetalhes}
-                  onRegistrar={onRegistrar}
-                />
-              ))}
+        {/* Breakdown por tipo */}
+        <div className="space-y-4">
+          {primeiraVez.length > 0 && (
+            <div>
+              <h4 className="text-xs font-bold text-purple-700 mb-2 flex items-center gap-2">
+                <BookOpen className="w-3 h-3" />
+                📚 Primeira vez ({primeiraVez.length})
+              </h4>
+              <div className="space-y-2">
+                {primeiraVez.map(atividade => (
+                  <AtividadeCard
+                    key={atividade.id}
+                    atividade={atividade}
+                    onDetalhes={onDetalhes}
+                    onRegistrar={onRegistrar}
+                  />
+                ))}
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+
+          {revisoes.length > 0 && (
+            <div>
+              <h4 className="text-xs font-bold text-orange-700 mb-2 flex items-center gap-2">
+                <RefreshCw className="w-3 h-3" />
+                🔄 Revisões ({revisoes.length})
+              </h4>
+              <div className="space-y-2">
+                {revisoes.map(atividade => (
+                  <AtividadeCard
+                    key={atividade.id}
+                    atividade={atividade}
+                    onDetalhes={onDetalhes}
+                    onRegistrar={onRegistrar}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -404,7 +470,7 @@ const SecaoAtividades: React.FC<SecaoAtividadesProps> = ({
 // Componente de Card de Atividade
 interface AtividadeCardProps {
   atividade: AtividadeDia;
-  onDetalhes?: (temaId: string) => void;
+  onDetalhes?: (temaNome: string) => void;
   onRegistrar?: (atividade: AtividadeDia) => void;
 }
 
@@ -529,7 +595,7 @@ const AtividadeCard: React.FC<AtividadeCardProps> = ({
         <div className="flex flex-col gap-1">
           {onDetalhes && (
             <button
-              onClick={() => onDetalhes(atividade.temaId)}
+              onClick={() => onDetalhes(atividade.temaNome)}
               className="px-2 py-1 text-[10px] font-medium text-blue-600 bg-blue-50 border border-blue-300 rounded hover:bg-blue-100 transition-colors"
               title="Ver detalhes no cronograma"
             >

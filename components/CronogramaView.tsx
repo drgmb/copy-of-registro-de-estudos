@@ -28,9 +28,15 @@ import { COLOR_STYLES } from '../temasCentralizados';
 
 interface CronogramaViewProps {
   sheetUrl: string;
+  temaNomeParaAbrir?: string | null;
+  onClearTemaNomeParaAbrir?: () => void;
 }
 
-export const CronogramaView: React.FC<CronogramaViewProps> = ({ sheetUrl }) => {
+export const CronogramaView: React.FC<CronogramaViewProps> = ({
+  sheetUrl,
+  temaNomeParaAbrir,
+  onClearTemaNomeParaAbrir
+}) => {
   const [cronograma, setCronograma] = useState<CronogramaState | null>(null);
   const [temaModal, setTemaModal] = useState<TemaEstudo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -77,6 +83,24 @@ export const CronogramaView: React.FC<CronogramaViewProps> = ({ sheetUrl }) => {
 
     carregarDados();
   }, [sheetUrl, recarregarFlag]);
+
+  // Auto-abrir modal quando navegar de "Hoje" tab
+  useEffect(() => {
+    if (temaNomeParaAbrir && cronograma && !loading) {
+      // Buscar o tema em todas as semanas pelo nome
+      for (const semana of cronograma.semanas) {
+        const tema = semana.temas.find(t => t.nome === temaNomeParaAbrir);
+        if (tema) {
+          setTemaModal(tema);
+          // Limpar o nome para não re-abrir se voltar para esta aba
+          if (onClearTemaNomeParaAbrir) {
+            onClearTemaNomeParaAbrir();
+          }
+          break;
+        }
+      }
+    }
+  }, [temaNomeParaAbrir, cronograma, loading, onClearTemaNomeParaAbrir]);
 
   // Função para recarregar manualmente
   const recarregarCronograma = () => {

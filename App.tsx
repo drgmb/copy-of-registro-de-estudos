@@ -81,10 +81,13 @@ const App: React.FC = () => {
   // Pre-fill data for StudyForm (when clicking from HojeView)
   const [preFillTopic, setPreFillTopic] = useState<string>('');
 
+  // Tema para abrir no cronograma (quando navegar de Hoje)
+  const [temaNomeParaAbrir, setTemaNomeParaAbrir] = useState<string | null>(null);
+
   // Navigation callbacks for HojeView
-  const handleNavigateToCronograma = (temaId: string) => {
+  const handleNavigateToCronograma = (temaNome: string) => {
+    setTemaNomeParaAbrir(temaNome);
     setActiveTab('cronograma');
-    // TODO: Scroll to tema and open modal when implemented
   };
 
   const handleNavigateToRegistro = (atividade: AtividadeDia) => {
@@ -397,7 +400,11 @@ const App: React.FC = () => {
                 <SimuladosForm onSubmit={handleSubmit} status={status} />
               )}
               {activeTab === 'cronograma' && (
-                <CronogramaView sheetUrl={sheetUrl} />
+                <CronogramaView
+                  sheetUrl={sheetUrl}
+                  temaNomeParaAbrir={temaNomeParaAbrir}
+                  onClearTemaNomeParaAbrir={() => setTemaNomeParaAbrir(null)}
+                />
               )}
               {activeTab === 'hoje' && (
                 <HojeView

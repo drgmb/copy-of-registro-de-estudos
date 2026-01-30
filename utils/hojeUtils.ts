@@ -179,7 +179,8 @@ export function processarAtividadesDia(
   // Arrays de resultado
   const concluidos: AtividadeDia[] = [];
   const pendentes: AtividadeDia[] = [];
-  const foraPrograma: AtividadeDia[] = [];
+  const foraPrograma: AtividadeDia[] = []; // Apenas revisões não programadas
+  const temasVistosHoje: AtividadeDia[] = []; // Primeiro Contato feito hoje
 
   // 4. Processar programados de hoje
   for (const prog of programadosHoje) {
@@ -212,33 +213,52 @@ export function processarAtividadesDia(
         const dataProg = normalizarData(new Date(programadoOutraData.data));
         const diasDif = calcularDiasAtraso(dataProg, hoje);
 
-        if (diasDif < 0) {
-          // Antecipado
-          foraPrograma.push(
-            criarAtividade(programadoOutraData, real, 'FORA_PROGRAMADO', {
-              tipo: 'ANTECIPADO',
-              diasDiferenca: Math.abs(diasDif),
-              dataOriginal: dataProg
-            })
-          );
+        // Revisões antecipadas/atrasadas vão para "Fora do Programado"
+        if (tipo === 'REVISAO') {
+          if (diasDif < 0) {
+            // Antecipado
+            foraPrograma.push(
+              criarAtividade(programadoOutraData, real, 'FORA_PROGRAMADO', {
+                tipo: 'ANTECIPADO',
+                diasDiferenca: Math.abs(diasDif),
+                dataOriginal: dataProg
+              })
+            );
+          } else {
+            // Atrasado mas concluído
+            foraPrograma.push(
+              criarAtividade(programadoOutraData, real, 'FORA_PROGRAMADO', {
+                tipo: 'ATRASADO_CONCLUIDO',
+                diasDiferenca: diasDif,
+                dataOriginal: dataProg
+              })
+            );
+          }
         } else {
-          // Atrasado mas concluído
-          foraPrograma.push(
-            criarAtividade(programadoOutraData, real, 'FORA_PROGRAMADO', {
-              tipo: 'ATRASADO_CONCLUIDO',
-              diasDiferenca: diasDif,
-              dataOriginal: dataProg
-            })
+          // Primeira vez antecipada/atrasada vai para "Temas Vistos Hoje"
+          temasVistosHoje.push(
+            criarAtividade(programadoOutraData, real, 'CONCLUIDO')
           );
         }
       } else {
         // Não estava programado
-        foraPrograma.push(
-          criarAtividade(null, real, 'FORA_PROGRAMADO', {
-            tipo: 'EXTRA',
-            diasDiferenca: 0
-          })
-        );
+        if (tipo === 'PRIMEIRA_VEZ') {
+          // Primeiro Contato não programado vai para "Temas Vistos Hoje"
+          temasVistosHoje.push(
+            criarAtividade(null, real, 'CONCLUIDO', {
+              tipo: 'EXTRA',
+              diasDiferenca: 0
+            })
+          );
+        } else {
+          // Revisão não programada vai para "Fora do Programado"
+          foraPrograma.push(
+            criarAtividade(null, real, 'FORA_PROGRAMADO', {
+              tipo: 'EXTRA',
+              diasDiferenca: 0
+            })
+          );
+        }
       }
     }
   }
@@ -261,6 +281,7 @@ export function processarAtividadesDia(
     pendentes,
     atrasados: atividadesAtrasadas,
     foraPrograma,
+    temasVistosHoje,
     stats
   };
 }

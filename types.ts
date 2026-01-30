@@ -144,6 +144,10 @@ export interface TemaEstudo {
     para: number;
     data: string; // ISO date
   }[];
+
+  // Tema Composto (quando múltiplos temas são estudados juntos)
+  isComposto?: boolean;
+  temasOriginais?: string[]; // IDs dos temas originais que foram unidos
 }
 
 export interface SemanaEstudo {
@@ -157,6 +161,17 @@ export interface CronogramaState {
   semanas: SemanaEstudo[];
   dataInicialCronograma: string; // ISO date - quando o cronograma foi criado
   ultimaAtualizacao: string; // ISO date
+  temasCompostos?: TemaCompostoInfo[]; // Lista de temas compostos criados
+}
+
+// Informação sobre tema composto para persistência
+export interface TemaCompostoInfo {
+  id: string; // ID do tema composto
+  nome: string; // Nome composto (ex: "AVC Isquêmico I + AVC Isquêmico II")
+  temasOriginaisIds: string[]; // IDs dos temas originais
+  temasOriginaisNomes: string[]; // Nomes dos temas originais
+  cor: CorRelevancia; // Cor do primeiro tema
+  dataCriacao: string; // ISO date
 }
 
 // Tipos antigos mantidos para compatibilidade (deprecated)
@@ -272,7 +287,8 @@ export interface EstadoAbaHoje {
   concluidos: AtividadeDia[];
   pendentes: AtividadeDia[];
   atrasados: AtividadeDia[];
-  foraPrograma: AtividadeDia[];
+  foraPrograma: AtividadeDia[]; // Apenas revisões não programadas
+  temasVistosHoje: AtividadeDia[]; // Primeiro Contato feito hoje
   stats: EstatisticasDia;
 }
 

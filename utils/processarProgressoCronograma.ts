@@ -66,6 +66,16 @@ function buscarTema(topicName: string, nomeParaId: Record<string, string>): stri
   return null;
 }
 
+// Detectar se é um tema composto (contém " + ")
+function isTemaComposto(topicName: string): boolean {
+  return topicName.includes(' + ');
+}
+
+// Extrair nomes dos temas individuais de um tema composto
+function extrairTemasDoComposto(topicName: string): string[] {
+  return topicName.split(' + ').map(nome => nome.trim());
+}
+
 // Normalizar difficulty de texto para número
 function normalizarDificuldade(difficulty: any): number | null {
   if (typeof difficulty === 'number' && difficulty >= 1 && difficulty <= 5) {
@@ -111,111 +121,128 @@ export function calcularProgressoDeRegistros(
       isClass: session.isClass
     });
 
-    const idTema = buscarTema(session.topic, NOME_PARA_ID);
+    // Detectar se é tema composto (contém " + ")
+    const isComposto = isTemaComposto(session.topic);
 
-    if (!idTema) {
-      temasNaoEncontrados.push(session.topic);
-      console.warn(`⚠️ Tema não encontrado no mapa: "${session.topic}" (registro ${idx + 1})`);
+    let temasParaProcessar: string[] = [];
 
-      // Procurar nomes similares para ajudar no debug
-      const topicNorm = normalizarNomeTema(session.topic);
-      const nomesParecidos = Object.keys(NOME_PARA_ID)
-        .filter(nome => {
-          const nomeNorm = normalizarNomeTema(nome);
-          return nomeNorm.includes(topicNorm.substring(0, Math.min(10, topicNorm.length)));
-        })
-        .slice(0, 5);
+    if (isComposto) {
+      // Extrair temas individuais
+      temasParaProcessar = extrairTemasDoComposto(session.topic);
+      console.log(`  📚 Tema composto detectado! Processando ${temasParaProcessar.length} temas:`, temasParaProcessar);
+    } else {
+      // Tema simples
+      temasParaProcessar = [session.topic];
+    }
 
-      if (nomesParecidos.length > 0) {
-        console.log(`  💡 Nomes parecidos encontrados:`, nomesParecidos);
-        console.log(`  🔍 Versão normalizada buscada: "${topicNorm}"`);
-        console.log(`  🔍 Exemplos normalizados:`, nomesParecidos.map(n => normalizarNomeTema(n)));
+    // Processar cada tema (individual ou do composto)
+    temasParaProcessar.forEach((nomeTema, temaIdx) => {
+      const idTema = buscarTema(nomeTema, NOME_PARA_ID);
+
+      if (!idTema) {
+        temasNaoEncontrados.push(nomeTema);
+        console.warn(`⚠️ Tema não encontrado no mapa: "${nomeTema}" (registro ${idx + 1}, tema ${temaIdx + 1})`);
+
+        // Procurar nomes similares para ajudar no debug
+        const topicNorm = normalizarNomeTema(nomeTema);
+        const nomesParecidos = Object.keys(NOME_PARA_ID)
+          .filter(nome => {
+            const nomeNorm = normalizarNomeTema(nome);
+            return nomeNorm.includes(topicNorm.substring(0, Math.min(10, topicNorm.length)));
+          })
+          .slice(0, 5);
+
+        if (nomesParecidos.length > 0) {
+          console.log(`  💡 Nomes parecidos encontrados:`, nomesParecidos);
+          console.log(`  🔍 Versão normalizada buscada: "${topicNorm}"`);
+          console.log(`  🔍 Exemplos normalizados:`, nomesParecidos.map(n => normalizarNomeTema(n)));
+        }
+
+        return;
       }
 
-      return;
-    }
+      console.log(`✅ Tema encontrado: "${nomeTema}" -> ID: ${idTema}, Data: ${session.date}`);
 
-    console.log(`✅ Tema encontrado: "${session.topic}" -> ID: ${idTema}, Data: ${session.date}`);
+      let progresso = progressoPorTema.get(idTema);
 
-    let progresso = progressoPorTema.get(idTema);
+      if (!progresso) {
+        progresso = {
+          idTema,
+          semanaAtual: 0, // Será definido pela semana original
+          estudado: false,
+          primeiraVez: null,
+          tipoEstudo: '',
+          datasEstudos: [],
+          revisoesTotal: 0,
+          revisoesConcluidas: 0,
+          datasRevisoes: [],
+          questoesFeitas: 0,
+          questoesCorretas: 0,
+          questoesErradas: 0,
+          grauDificuldade: null,
+          migracoes: '[]'
+        };
+        progressoPorTema.set(idTema, progresso);
+      }
 
-    if (!progresso) {
-      progresso = {
-        idTema,
-        semanaAtual: 0, // Será definido pela semana original
-        estudado: false,
-        primeiraVez: null,
-        tipoEstudo: '',
-        datasEstudos: [],
-        revisoesTotal: 0,
-        revisoesConcluidas: 0,
-        datasRevisoes: [],
-        questoesFeitas: 0,
-        questoesCorretas: 0,
-        questoesErradas: 0,
-        grauDificuldade: null,
-        migracoes: '[]'
-      };
-      progressoPorTema.set(idTema, progresso);
-    }
+      // Marcar como estudado
+      progresso.estudado = true;
 
-    // Marcar como estudado
-    progresso.estudado = true;
-
-    // Primeira vez
-    if (!progresso.primeiraVez) {
-      progresso.primeiraVez = session.date;
-    } else {
-      // Se a data atual é anterior, atualizar
-      if (new Date(session.date) < new Date(progresso.primeiraVez)) {
+      // Primeira vez
+      if (!progresso.primeiraVez) {
         progresso.primeiraVez = session.date;
-      }
-    }
-
-    // Adicionar data de estudo
-    if (!progresso.datasEstudos.includes(session.date)) {
-      progresso.datasEstudos.push(session.date);
-    }
-
-    // Determinar tipo de estudo
-    if (session.isClass) {
-      if (progresso.tipoEstudo === 'REVISAO') {
-        progresso.tipoEstudo = 'AULA_E_REVISAO';
-      } else if (progresso.tipoEstudo !== 'AULA_E_REVISAO') {
-        progresso.tipoEstudo = 'AULA';
-      }
-    } else {
-      if (progresso.tipoEstudo === 'AULA') {
-        progresso.tipoEstudo = 'AULA_E_REVISAO';
-      } else if (progresso.tipoEstudo !== 'AULA_E_REVISAO') {
-        progresso.tipoEstudo = 'REVISAO';
-      }
-
-      // Se é revisão, adicionar às datas de revisões
-      if (!progresso.datasRevisoes.includes(session.date)) {
-        progresso.datasRevisoes.push(session.date);
-        progresso.revisoesConcluidas++;
-      }
-    }
-
-    // Questões
-    if (session.totalQuestions > 0) {
-      progresso.questoesFeitas += session.totalQuestions;
-      progresso.questoesCorretas += session.correctQuestions;
-      progresso.questoesErradas += (session.totalQuestions - session.correctQuestions);
-    }
-
-    // Grau de Dificuldade (pegar a maior dificuldade registrada)
-    if (session.difficulty) {
-      const dificuldade = normalizarDificuldade(session.difficulty);
-      console.log(`  🎯 Dificuldade: "${session.difficulty}" → ${dificuldade}`);
-      if (dificuldade !== null) {
-        if (progresso.grauDificuldade === null || dificuldade > progresso.grauDificuldade) {
-          progresso.grauDificuldade = dificuldade;
+      } else {
+        // Se a data atual é anterior, atualizar
+        if (new Date(session.date) < new Date(progresso.primeiraVez)) {
+          progresso.primeiraVez = session.date;
         }
       }
-    }
-  });
+
+      // Adicionar data de estudo
+      if (!progresso.datasEstudos.includes(session.date)) {
+        progresso.datasEstudos.push(session.date);
+      }
+
+      // Determinar tipo de estudo
+      if (session.isClass) {
+        if (progresso.tipoEstudo === 'REVISAO') {
+          progresso.tipoEstudo = 'AULA_E_REVISAO';
+        } else if (progresso.tipoEstudo !== 'AULA_E_REVISAO') {
+          progresso.tipoEstudo = 'AULA';
+        }
+      } else {
+        if (progresso.tipoEstudo === 'AULA') {
+          progresso.tipoEstudo = 'AULA_E_REVISAO';
+        } else if (progresso.tipoEstudo !== 'AULA_E_REVISAO') {
+          progresso.tipoEstudo = 'REVISAO';
+        }
+
+        // Se é revisão, adicionar às datas de revisões
+        if (!progresso.datasRevisoes.includes(session.date)) {
+          progresso.datasRevisoes.push(session.date);
+          progresso.revisoesConcluidas++;
+        }
+      }
+
+      // Questões
+      if (session.totalQuestions > 0) {
+        progresso.questoesFeitas += session.totalQuestions;
+        progresso.questoesCorretas += session.correctQuestions;
+        progresso.questoesErradas += (session.totalQuestions - session.correctQuestions);
+      }
+
+      // Grau de Dificuldade (pegar a maior dificuldade registrada)
+      if (session.difficulty) {
+        const dificuldade = normalizarDificuldade(session.difficulty);
+        console.log(`  🎯 Dificuldade: "${session.difficulty}" → ${dificuldade}`);
+        if (dificuldade !== null) {
+          if (progresso.grauDificuldade === null || dificuldade > progresso.grauDificuldade) {
+            progresso.grauDificuldade = dificuldade;
+          }
+        }
+      }
+    }); // Fecha forEach dos temas (temasParaProcessar)
+  }); // Fecha forEach das sessões (dataEntry)
 
   // 2. Processar DIÁRIO (programações/revisões planejadas)
   diario.forEach(registro => {

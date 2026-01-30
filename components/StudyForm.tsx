@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StudySession, AppStatus } from '../types';
 import { AVAILABLE_CLASSES, ClassItem } from '../constants';
-import { CheckCircle2, Circle, AlertCircle, Loader2, BookOpen, ListFilter, BarChart2 } from 'lucide-react';
+import { CheckCircle2, Circle, AlertCircle, Loader2, BookOpen, ListFilter, BarChart2, X } from 'lucide-react';
 
 interface StudyFormProps {
   onSubmit: (data: StudySession) => void;
@@ -13,23 +13,27 @@ export const StudyForm: React.FC<StudyFormProps> = ({ onSubmit, status, preFillT
   // State
   const [topicName, setTopicName] = useState('');
   const [selectedClass, setSelectedClass] = useState<ClassItem | null>(null);
-  
+
   // New Fields - Default values ensured
   const [details, setDetails] = useState('Primeiro Contato');
   const [difficulty, setDifficulty] = useState('Médio');
 
   const [isClass, setIsClass] = useState(false);
   const [isQuestions, setIsQuestions] = useState(false);
-  
+
   // Using strings for inputs to allow empty states easily
   const [totalQuestions, setTotalQuestions] = useState<string>('');
   const [correctQuestions, setCorrectQuestions] = useState<string>('');
-  
+
   const [filteredClasses, setFilteredClasses] = useState<ClassItem[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
-  
+
   // Validation Errors State
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Múltiplos temas (tema composto)
+  const [temasCompostos, setTemasCompostos] = useState<ClassItem[]>([]);
+  const [modoComposicao, setModoComposicao] = useState(false);
 
   const wrapperRef = useRef<HTMLDivElement>(null);
 
@@ -73,8 +77,16 @@ export const StudyForm: React.FC<StudyFormProps> = ({ onSubmit, status, preFillT
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
 
-    if (!topicName.trim()) {
-      newErrors.topic = "O tema é obrigatório.";
+    // Se está em modo composição, validar que tem pelo menos 2 temas
+    if (modoComposicao) {
+      if (temasCompostos.length < 2) {
+        newErrors.topic = "Adicione pelo menos 2 temas para criar um tema composto.";
+      }
+    } else {
+      // Modo normal: validar que tem um tema selecionado
+      if (!topicName.trim()) {
+        newErrors.topic = "O tema é obrigatório.";
+      }
     }
 
     if (!details) {
@@ -110,17 +122,74 @@ export const StudyForm: React.FC<StudyFormProps> = ({ onSubmit, status, preFillT
     return Object.keys(newErrors).length === 0;
   };
 
+  // Funções para gerenciar temas compostos
+  const adicionarTemaAoCompost = () => {
+    if (!selectedClass) {
+      setErrors({ ...errors, topic: 'Selecione um tema primeiro' });
+      return;
+    }
+
+    // Verificar se o tema já está na lista
+    const jaExiste = temasCompostos.some(t => t.id === selectedClass.id);
+    if (jaExiste) {
+      setErrors({ ...errors, topic: 'Este tema já está na lista' });
+      return;
+    }
+
+    // Adicionar tema à lista
+    setTemasCompostos([...temasCompostos, selectedClass]);
+    setModoComposicao(true);
+
+    // Limpar seleção para permitir adicionar outro
+    setTopicName('');
+    setSelectedClass(null);
+    setShowSuggestions(false);
+    setErrors({});
+  };
+
+  const removerTemaDoComposto = (temaId: string) => {
+    const novosTemasCompostos = temasCompostos.filter(t => t.id !== temaId);
+    setTemasCompostos(novosTemasCompostos);
+
+    // Se ficou apenas 1 tema ou nenhum, desabilitar modo composição
+    if (novosTemasCompostos.length < 2) {
+      setModoComposicao(false);
+    }
+  };
+
+  const cancelarComposicao = () => {
+    setTemasCompostos([]);
+    setModoComposicao(false);
+    setTopicName('');
+    setSelectedClass(null);
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!validateForm()) {
       // Scroll to top or show visual shake could be added here
       return;
     }
 
+    // Se está em modo composição, criar tema composto
+    let topicFinal = topicName;
+    let topicIdFinal = selectedClass?.id || '';
+
+    if (modoComposicao && temasCompostos.length >= 2) {
+      // Criar nome composto juntando os nomes com " + "
+      topicFinal = temasCompostos.map((t: ClassItem) => t.name).join(' + ');
+      // Criar ID composto (usaremos o primeiro ID + sufixo)
+      topicIdFinal = `${temasCompostos[0].id}_composto`;
+    } else if (modoComposicao && temasCompostos.length === 1) {
+      // Se só tem 1 tema na lista, usar ele
+      topicFinal = temasCompostos[0].name;
+      topicIdFinal = temasCompostos[0].id;
+    }
+
     const sessionData: StudySession = {
-      topicId: selectedClass?.id || '',
-      topic: topicName,
+      topicId: topicIdFinal,
+      topic: topicFinal,
       details,
       difficulty,
       isClass,
@@ -131,6 +200,11 @@ export const StudyForm: React.FC<StudyFormProps> = ({ onSubmit, status, preFillT
     };
 
     onSubmit(sessionData);
+
+    // Resetar modo composição após submit
+    if (modoComposicao) {
+      cancelarComposicao();
+    }
   };
 
   const isSubmitting = status === AppStatus.SUBMITTING;
@@ -192,6 +266,84 @@ export const StudyForm: React.FC<StudyFormProps> = ({ onSubmit, status, preFillT
           )}
         </div>
         {errors.topic && <p className="text-red-500 text-xs mt-1 font-medium">{errors.topic}</p>}
+
+        {/* Botão Adicionar Outro Tema */}
+        {!modoComposicao && selectedClass && (
+          <button
+            type="button"
+            onClick={adicionarTemaAoCompost}
+            className="mt-2 flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-300 rounded-lg hover:bg-blue-100 transition-colors"
+          >
+            <span className="text-lg">+</span>
+            Estudar junto com outro tema
+          </button>
+        )}
+
+        {/* Lista de Temas Compostos */}
+        {modoComposicao && temasCompostos.length > 0 && (
+          <div className="mt-3 p-4 bg-blue-50 border border-blue-300 rounded-lg space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-bold text-blue-900">
+                📚 Estudando múltiplos temas juntos
+              </h4>
+              <button
+                type="button"
+                onClick={cancelarComposicao}
+                className="text-xs text-blue-700 hover:text-blue-900 underline"
+              >
+                Cancelar
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              {temasCompostos.map((tema: ClassItem, idx: number) => (
+                <div
+                  key={tema.id}
+                  className="flex items-center justify-between bg-white p-3 rounded-lg border border-blue-200"
+                >
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-blue-600 bg-blue-100 px-2 py-1 rounded">
+                      {idx + 1}
+                    </span>
+                    <span className="text-sm font-medium text-gray-800">{tema.name}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removerTemaDoComposto(tema.id)}
+                    className="text-red-600 hover:text-red-800 hover:bg-red-50 p-1 rounded"
+                    title="Remover tema"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ))}
+            </div>
+
+            {/* Input para adicionar mais temas */}
+            <div className="pt-2 border-t border-blue-200">
+              <p className="text-xs text-blue-700 mb-2 font-medium">
+                Adicione mais temas ou clique em Registrar para salvar
+              </p>
+              {selectedClass && (
+                <button
+                  type="button"
+                  onClick={adicionarTemaAoCompost}
+                  className="w-full py-2 text-sm font-medium text-blue-700 bg-white border border-blue-300 rounded-lg hover:bg-blue-50 transition-colors"
+                >
+                  + Adicionar "{selectedClass.name}"
+                </button>
+              )}
+            </div>
+
+            {/* Preview do nome composto */}
+            <div className="pt-2 border-t border-blue-200">
+              <p className="text-xs text-blue-600 mb-1">Nome que será registrado:</p>
+              <p className="text-sm font-bold text-blue-900 bg-white p-2 rounded border border-blue-200">
+                {temasCompostos.map((t: ClassItem) => t.name).join(' + ')}
+              </p>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Details and Difficulty Row */}
