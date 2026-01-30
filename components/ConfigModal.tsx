@@ -137,10 +137,26 @@ function doPost(e) {
     const action = e.parameter.action || '';
     const type = e.parameter.type || 'study';
 
-    // Handler para salvar cronograma
+    // Handlers para cronograma
     if (action === 'saveCronograma') {
       const dataStr = e.parameter.data || '';
       return ContentService.createTextOutput(JSON.stringify(saveCronograma(ss, dataStr)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (action === 'getCronogramaCompleto') {
+      return ContentService.createTextOutput(JSON.stringify(getCronogramaCompleto(ss)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // Handlers para aba HOJE
+    if (action === 'getDiario') {
+      return ContentService.createTextOutput(JSON.stringify(getDiario(ss)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (action === 'getAllStudySessions') {
+      return ContentService.createTextOutput(JSON.stringify(getAllStudySessions(ss)))
         .setMimeType(ContentService.MimeType.JSON);
     }
 

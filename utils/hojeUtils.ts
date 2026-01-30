@@ -304,7 +304,14 @@ export async function carregarDiario(sheetUrl: string): Promise<RegistroDiario[]
   if (!sheetUrl) return [];
 
   try {
-    const response = await fetch(`${sheetUrl}?action=getDiario`);
+    const formData = new URLSearchParams();
+    formData.append('action', 'getDiario');
+
+    const response = await fetch(sheetUrl, {
+      method: 'POST',
+      body: formData
+    });
+
     const result = await response.json();
 
     if (result.status === 'error') {
@@ -326,7 +333,14 @@ export async function carregarDataEntry(
   if (!sheetUrl) return [];
 
   try {
-    const response = await fetch(`${sheetUrl}?action=getAllStudySessions`);
+    const formData = new URLSearchParams();
+    formData.append('action', 'getAllStudySessions');
+
+    const response = await fetch(sheetUrl, {
+      method: 'POST',
+      body: formData
+    });
+
     const result = await response.json();
 
     if (result.status === 'error') {

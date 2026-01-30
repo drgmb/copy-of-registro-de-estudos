@@ -189,7 +189,14 @@ export async function carregarCronograma(sheetUrl: string): Promise<CronogramaSt
   if (!sheetUrl) return null;
 
   try {
-    const response = await fetch(`${sheetUrl}?action=getCronogramaCompleto`);
+    const formData = new URLSearchParams();
+    formData.append('action', 'getCronogramaCompleto');
+
+    const response = await fetch(sheetUrl, {
+      method: 'POST',
+      body: formData
+    });
+
     const result = await response.json();
 
     if (result.status === 'error') {
