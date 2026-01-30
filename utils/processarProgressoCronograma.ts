@@ -4,7 +4,7 @@
 // ==========================================
 
 import { StudySession, RegistroDiario } from '../types';
-import { NOME_PARA_ID } from '../temasCentralizados';
+import { NOME_PARA_ID, TEMAS_POR_ID } from '../temasCentralizados';
 
 export interface ProgressoTema {
   idTema: string;
@@ -259,7 +259,6 @@ export function calcularProgressoDeRegistros(
     if (progresso.datasEstudos.length === 0) return;
 
     // Pegar semana original do tema
-    const { TEMAS_POR_ID } = require('../temasCentralizados');
     const temaBase = TEMAS_POR_ID[idTema];
     if (!temaBase) return;
 
