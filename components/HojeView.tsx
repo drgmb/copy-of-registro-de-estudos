@@ -333,18 +333,16 @@ export const HojeView: React.FC<HojeViewProps> = ({
           onToggle={() => toggleSecao('concluidos')}
         />
 
-        {/* Atrasados */}
-        {estadoFiltrado.atrasados.length > 0 && (
-          <SecaoAtividades
-            titulo="🔴 ATRASADOS"
-            atividades={estadoFiltrado.atrasados}
-            tipo="atrasado"
-            onDetalhes={onNavigateToCronograma}
-            onRegistrar={onNavigateToRegistro}
-            isOpen={secaoAberta.atrasados}
-            onToggle={() => toggleSecao('atrasados')}
-          />
-        )}
+        {/* Atrasados - Sempre mostrar */}
+        <SecaoAtividades
+          titulo="🔴 ATRASADOS"
+          atividades={estadoFiltrado.atrasados}
+          tipo="atrasado"
+          onDetalhes={onNavigateToCronograma}
+          onRegistrar={onNavigateToRegistro}
+          isOpen={secaoAberta.atrasados}
+          onToggle={() => toggleSecao('atrasados')}
+        />
 
         {/* Fora do Programado - Apenas Revisões */}
         {estadoFiltrado.foraPrograma.length > 0 && (
