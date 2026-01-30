@@ -3,37 +3,18 @@
 ## ✅ O Que Foi Implementado
 
 1. **Sistema de sincronização** entre dispositivos via Google Sheets
-2. **Dados base** (aba CRONOGRAMA): 638 temas com cores e semanas
+2. **Dados base** (arquivo CSV local): 652 temas com cores e semanas - **NÃO precisa criar aba CRONOGRAMA**
 3. **Dados dinâmicos** (aba CRONOGRAMA_PROGRESSO): progresso individual de cada tema
-4. **Payload otimizado**: Salva apenas temas modificados (não todos os 638)
+4. **Payload otimizado**: Salva apenas temas modificados (não todos os 652)
+5. **Cálculo automático**: Todo progresso calculado de DATA ENTRY e DIÁRIO
 
 ## 📋 Próximos Passos
 
-### 1. Popular Aba CRONOGRAMA
+### 1. ~~Popular Aba CRONOGRAMA~~ ✅ NÃO É MAIS NECESSÁRIO
 
-Você tem 3 opções:
+**Os dados base agora vêm do arquivo CSV local** ([temas_cronograma.csv](temas_cronograma.csv))
 
-#### Opção A: Importar CSV (MAIS RÁPIDO)
-
-1. Abra o arquivo [temas_cronograma.csv](temas_cronograma.csv)
-2. Copie TODO o conteúdo (Ctrl+A, Ctrl+C)
-3. No Google Sheets, aba CRONOGRAMA
-4. Cole na célula A1
-5. Selecione os dados → Data → Split text to columns
-6. Pronto! 638 temas importados
-
-#### Opção B: Usar Apps Script
-
-1. No Google Sheets → Extensões → Apps Script
-2. Crie uma nova função e cole o código de [POPULAR_CRONOGRAMA.md](POPULAR_CRONOGRAMA.md)
-3. Execute a função `popularCronograma()`
-
-#### Opção C: Copiar e Colar do CSV
-
-1. Abra [temas_cronograma.csv](temas_cronograma.csv)
-2. Copie as primeiras 50 linhas
-3. Cole na aba CRONOGRAMA
-4. Repita até completar os 638 temas
+Você **NÃO precisa** criar ou popular a aba CRONOGRAMA no Google Sheets. O sistema usa o CSV diretamente, tornando o carregamento muito mais rápido.
 
 ### 2. Atualizar Google Apps Script
 
@@ -72,73 +53,94 @@ Você tem 3 opções:
 ## 🔄 Como Funciona a Sincronização
 
 ### Ao Abrir o Cronograma:
-1. Carrega dados BASE da aba CRONOGRAMA (638 temas)
-2. Carrega PROGRESSO da aba CRONOGRAMA_PROGRESSO
-3. Combina os dois para criar o estado completo
-4. Exibe na interface
+1. Carrega dados BASE do **arquivo CSV local** (652 temas) - INSTANTÂNEO ⚡
+2. Busca **DATA ENTRY** e **DIÁRIO** do Google Sheets
+3. Busca **CRONOGRAMA_PROGRESSO** do Google Sheets
+4. Calcula progresso automaticamente de DATA ENTRY + DIÁRIO
+5. Combina tudo para criar o estado completo
+6. Exibe na interface
 
-### Ao Modificar um Tema:
-1. Atualiza o estado local (React)
-2. Salva APENAS esse tema na aba CRONOGRAMA_PROGRESSO
-3. Payload pequeno (~500 bytes vs 393KB)
+### Ao Estudar um Tema:
+1. Você registra em **DATA ENTRY** (na planilha)
+2. Sistema detecta automaticamente o tema estudado
+3. Calcula todas as métricas (questões, revisões, dificuldade, etc.)
+4. Determina a semana correta baseado na data
+5. Salva progresso na aba **CRONOGRAMA_PROGRESSO**
+6. Payload pequeno (~500 bytes por tema)
 
 ### Em Outro Dispositivo:
-1. Ao abrir, carrega os mesmos dados
-2. Vê as mesmas modificações
-3. Sincronização automática!
+1. Carrega CSV local (mesmo em todos os dispositivos)
+2. Busca DATA ENTRY e DIÁRIO do Sheets (sincronizados)
+3. Calcula o mesmo progresso
+4. Vê exatamente os mesmos dados ✓
 
-## 📊 Estrutura das Abas
+## 📊 Estrutura de Dados
 
-### CRONOGRAMA (Apenas Leitura)
+### temas_cronograma.csv (Arquivo Local - Fonte Única de Verdade)
 ```
-ID | TEMA | COR | SEMANA_ORIGINAL
-1  | AVC Isquêmico 1 | VERDE | 1
-2  | AVC Isquêmico 2 | VERDE | 1
+ID,TEMA,COR,SEMANA_ORIGINAL
+1,AVC Isquêmico 1,VERDE,1
+2,AVC Isquêmico 2,VERDE,1
 ...
+652,Último tema,ROXO,30
 ```
 
-### CRONOGRAMA_PROGRESSO (Criada Automaticamente)
+- **652 temas** médicos
+- Carregado instantaneamente (não precisa buscar do Sheets)
+- **NÃO precisa criar aba CRONOGRAMA no Google Sheets**
+
+### CRONOGRAMA_PROGRESSO (Aba no Google Sheets - Criada Automaticamente)
 ```
 ID_TEMA | SEMANA_ATUAL | ESTUDADO | PRIMEIRA_VEZ | ...
 1       | 3            | TRUE     | 2026-01-30T... | ...
 5       | 5            | TRUE     | 2026-01-29T... | ...
 ```
 
-Apenas temas MODIFICADOS aparecem aqui!
+- Apenas temas MODIFICADOS aparecem aqui
+- Calculado automaticamente de DATA ENTRY e DIÁRIO
 
 ## ⚠️ Importante
 
-1. **Não modifique** a aba CRONOGRAMA após popular (é a base de dados)
+1. **NÃO crie** a aba CRONOGRAMA no Google Sheets (não é mais necessária)
 2. **Não modifique** manualmente a aba CRONOGRAMA_PROGRESSO (é gerenciada pelo app)
-3. **Faça backup** da planilha antes de testar
+3. **Registre estudos** apenas no DATA ENTRY e DIÁRIO
+4. **Faça backup** da planilha antes de testar
 
 ## 🐛 Solução de Problemas
 
 ### Cronograma vazio
-- Verifique se a aba CRONOGRAMA tem os 638 temas
+- O CSV local existe? Deve estar em `/temas_cronograma.csv`
 - Veja o console (F12) para erros
+- Verifique se DATA ENTRY e DIÁRIO estão acessíveis
 
 ### Não sincroniza entre dispositivos
 - Verifique se a URL do Google Apps Script está atualizada
 - Confirme que o deployment é "Anyone"
+- Teste se DATA ENTRY e DIÁRIO estão salvando corretamente
 
-### Erro ao salvar
-- Veja se criou a aba CRONOGRAMA_PROGRESSO (pode ser criada automaticamente)
+### Erro ao salvar progresso
 - Verifique permissões da planilha
+- A aba CRONOGRAMA_PROGRESSO será criada automaticamente na primeira gravação
+
+### Tema não aparece como estudado
+- Verifique se registrou no DATA ENTRY com o nome EXATO do tema
+- O nome deve corresponder exatamente ao CSV (case-sensitive)
 
 ## 📁 Arquivos Importantes
 
-- **temas_cronograma.csv**: 638 temas prontos para importar
-- **POPULAR_CRONOGRAMA.md**: Guia detalhado de como popular
+- **temas_cronograma.csv**: 652 temas (fonte única de verdade)
+- **temasCentralizados.ts**: Gerado automaticamente do CSV
 - **INSTRUCOES_FINAIS.md**: Este arquivo
 
 ## ✨ Pronto!
 
 Após seguir todos os passos, você terá:
-- ✅ 638 temas médicos organizados em 30 semanas
-- ✅ Sincronização entre dispositivos
-- ✅ Progresso salvo automaticamente
-- ✅ Sem erro de CORS
+- ✅ 652 temas médicos organizados em 30 semanas
+- ✅ Carregamento instantâneo (dados do CSV local)
+- ✅ Sincronização entre dispositivos (via Google Sheets)
+- ✅ Progresso calculado automaticamente (de DATA ENTRY + DIÁRIO)
+- ✅ Migração automática de semanas baseada nas datas
+- ✅ Modal 100% read-only com dados dinâmicos
 - ✅ Sistema escalável e eficiente
 
 Boa sorte nos estudos! 🩺📚

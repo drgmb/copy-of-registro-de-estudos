@@ -492,17 +492,26 @@ export async function carregarCronogramaSync(sheetUrl: string): Promise<Cronogra
     // Importação dinâmica para evitar dependências circulares
     const { carregarDiario, carregarDataEntry } = await import('./hojeUtils');
     const { calcularProgressoDeRegistros, mesclarProgressos } = await import('./processarProgressoCronograma');
+    const { TEMAS_BASE } = await import('../temasCentralizados');
 
-    // Carregar dados base e registros
-    const [temasBase, dataEntry, diario, progressosSalvos] = await Promise.all([
-      carregarCronogramaBase(sheetUrl),
+    // Usar dados base do CSV (mais rápido que buscar da planilha)
+    // Converter TEMAS_BASE para o formato esperado
+    const temasBase = TEMAS_BASE.map(tema => ({
+      id: tema.id,
+      nome: tema.nome,
+      cor: tema.cor,
+      semanaOriginal: tema.semanaOriginal
+    }));
+
+    // Carregar apenas dados dinâmicos da planilha
+    const [dataEntry, diario, progressosSalvos] = await Promise.all([
       carregarDataEntry(sheetUrl),
       carregarDiario(sheetUrl),
       carregarCronogramaProgressoAPI(sheetUrl)
     ]);
 
     if (temasBase.length === 0) {
-      console.warn('Nenhum tema encontrado na aba CRONOGRAMA');
+      console.warn('Nenhum tema encontrado no CSV');
       return null;
     }
 
