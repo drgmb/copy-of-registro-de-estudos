@@ -1868,8 +1868,24 @@ function getDiario(ss) {
       const row = data[i];
       if (!row[0] || !row[1]) continue; // Pular linhas vazias
 
+      // Validar e converter data
+      let dataISO;
+      try {
+        if (row[0] instanceof Date) {
+          dataISO = row[0].toISOString();
+        } else {
+          const dateObj = new Date(row[0]);
+          if (isNaN(dateObj.getTime())) {
+            continue; // Pular se data inválida
+          }
+          dataISO = dateObj.toISOString();
+        }
+      } catch (e) {
+        continue; // Pular se erro ao converter data
+      }
+
       registros.push({
-        data: row[0] instanceof Date ? row[0].toISOString() : new Date(row[0]).toISOString(),
+        data: dataISO,
         tema: row[1].toString(),
         acao: row[2] ? row[2].toString() : 'Primeira vez',
         semana: row[3] ? parseInt(row[3]) : null
@@ -1917,8 +1933,24 @@ function getAllStudySessions(ss) {
       const row = data[i];
       if (!row[0] || !row[1]) continue; // Pular linhas vazias
 
+      // Validar e converter data
+      let dateISO;
+      try {
+        if (row[0] instanceof Date) {
+          dateISO = row[0].toISOString();
+        } else {
+          const dateObj = new Date(row[0]);
+          if (isNaN(dateObj.getTime())) {
+            continue; // Pular se data inválida
+          }
+          dateISO = dateObj.toISOString();
+        }
+      } catch (e) {
+        continue; // Pular se erro ao converter data
+      }
+
       sessions.push({
-        date: row[0] instanceof Date ? row[0].toISOString() : new Date(row[0]).toISOString(),
+        date: dateISO,
         topic: row[1].toString(),
         details: row[2] ? row[2].toString() : '',
         difficulty: row[3] ? row[3].toString() : '',
