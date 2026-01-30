@@ -8,7 +8,7 @@ import {
   StatusAtividade,
   CorRelevancia
 } from '../types';
-import { TEMAS_CORES } from '../temasColors';
+import { TEMAS_CORES } from '../temasCentralizados';
 
 // Gerar UUID simples
 function generateUUID(): string {

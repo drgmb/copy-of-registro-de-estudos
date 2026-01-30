@@ -11,7 +11,7 @@ import {
   Save
 } from 'lucide-react';
 import { TemaEstudo, CronogramaState } from '../types';
-import { COLOR_STYLES } from '../temasColors';
+import { COLOR_STYLES } from '../temasCentralizados';
 import { migrarTema, atualizarTema, calcularPercentualAcerto } from '../utils/cronogramaUtils';
 
 interface TemaDetalhesModalProps {
@@ -20,13 +20,15 @@ interface TemaDetalhesModalProps {
   sheetUrl: string;
   onClose: () => void;
   onUpdate: (novoCronograma: CronogramaState) => Promise<void>;
+  onSalvarProgresso: (tema: TemaEstudo) => Promise<void>;
 }
 
 export const TemaDetalhesModal: React.FC<TemaDetalhesModalProps> = ({
   tema,
   cronograma,
   onClose,
-  onUpdate
+  onUpdate,
+  onSalvarProgresso
 }) => {
   const [temaEditado, setTemaEditado] = useState<TemaEstudo>(tema);
   const [mostrarMovimentacao, setMostrarMovimentacao] = useState(false);
@@ -99,29 +101,36 @@ export const TemaDetalhesModal: React.FC<TemaDetalhesModalProps> = ({
   };
 
   // Mover tema para outra semana
-  const handleMoverSemana = (novaSemana: number) => {
+  const handleMoverSemana = async (novaSemana: number) => {
     const { temaAtualizado, semanasAtualizadas } = migrarTema(
       temaEditado,
       novaSemana,
       cronograma.semanas
     );
 
-    onUpdate({
+    await onUpdate({
       ...cronograma,
       semanas: semanasAtualizadas
     });
+
+    // Salvar progresso no Google Sheets
+    await onSalvarProgresso(temaAtualizado);
 
     setTemaEditado(temaAtualizado);
     setMostrarMovimentacao(false);
   };
 
   // Salvar alterações
-  const handleSalvar = () => {
+  const handleSalvar = async () => {
     const semanasAtualizadas = atualizarTema(temaEditado, cronograma.semanas);
-    onUpdate({
+    await onUpdate({
       ...cronograma,
       semanas: semanasAtualizadas
     });
+
+    // Salvar progresso no Google Sheets
+    await onSalvarProgresso(temaEditado);
+
     onClose();
   };
 

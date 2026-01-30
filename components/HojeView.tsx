@@ -26,7 +26,7 @@ import {
   formatarData,
   obterMensagemMotivacional
 } from '../utils/hojeUtils';
-import { COLOR_STYLES } from '../temasColors';
+import { COLOR_STYLES } from '../temasCentralizados';
 
 interface HojeViewProps {
   sheetUrl: string;

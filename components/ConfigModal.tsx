@@ -160,6 +160,23 @@ function doPost(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
+    // Handlers para novo cronograma (sincronizado)
+    if (action === 'getCronogramaBase') {
+      return ContentService.createTextOutput(JSON.stringify(getCronogramaBase(ss)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (action === 'getCronogramaProgresso') {
+      return ContentService.createTextOutput(JSON.stringify(getCronogramaProgresso(ss)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (action === 'salvarProgresso') {
+      const progressoData = JSON.parse(e.parameter.progresso || '{}');
+      return ContentService.createTextOutput(JSON.stringify(salvarProgresso(ss, progressoData)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
     if (type === 'simulado') {
       // Processar dados de simulado
       const simuladoData = {
@@ -1985,6 +2002,188 @@ function getAllStudySessions(ss) {
     return {
       status: 'error',
       message: 'Erro ao carregar sessões de estudo: ' + err.toString()
+    };
+  }
+}
+
+// ==========================================
+// FUNÇÕES PARA CRONOGRAMA (NOVO)
+// ==========================================
+
+// Buscar dados base do cronograma (645 temas)
+function getCronogramaBase(ss) {
+  try {
+    const cronogramaSheet = ss.getSheetByName("CRONOGRAMA");
+
+    if (!cronogramaSheet) {
+      return {
+        status: 'error',
+        message: 'Aba CRONOGRAMA não encontrada'
+      };
+    }
+
+    const lastRow = cronogramaSheet.getLastRow();
+    if (lastRow <= 1) {
+      return {
+        status: 'success',
+        data: []
+      };
+    }
+
+    // Estrutura: ID | TEMA | COR | SEMANA_ORIGINAL
+    const data = cronogramaSheet.getRange(2, 1, lastRow - 1, 4).getValues();
+
+    const temas = [];
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
+      if (!row[0] || !row[1]) continue; // Pular se não tem ID ou TEMA
+
+      temas.push({
+        id: row[0].toString(),
+        nome: row[1].toString(),
+        cor: row[2] ? row[2].toString().toUpperCase() : 'VERDE',
+        semanaOriginal: row[3] ? parseInt(row[3]) : 1
+      });
+    }
+
+    return {
+      status: 'success',
+      data: temas
+    };
+  } catch (err) {
+    return {
+      status: 'error',
+      message: 'Erro ao carregar cronograma base: ' + err.toString()
+    };
+  }
+}
+
+// Buscar progresso dos temas
+function getCronogramaProgresso(ss) {
+  try {
+    const progressoSheet = ss.getSheetByName("CRONOGRAMA_PROGRESSO");
+
+    if (!progressoSheet) {
+      // Se não existe, retorna vazio (será criada ao salvar)
+      return {
+        status: 'success',
+        data: []
+      };
+    }
+
+    const lastRow = progressoSheet.getLastRow();
+    if (lastRow <= 1) {
+      return {
+        status: 'success',
+        data: []
+      };
+    }
+
+    // Estrutura: ID_TEMA | SEMANA_ATUAL | ESTUDADO | PRIMEIRA_VEZ | TIPO_ESTUDO | DATAS_ESTUDOS |
+    //            REVISOES_TOTAL | REVISOES_CONCLUIDAS | DATAS_REVISOES | QUESTOES_FEITAS |
+    //            QUESTOES_CORRETAS | QUESTOES_ERRADAS | GRAU_DIFICULDADE | MIGRACOES
+    const data = progressoSheet.getRange(2, 1, lastRow - 1, 14).getValues();
+
+    const progressos = [];
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
+      if (!row[0]) continue; // Pular se não tem ID_TEMA
+
+      const progresso = {
+        idTema: row[0].toString(),
+        semanaAtual: row[1] ? parseInt(row[1]) : null,
+        estudado: row[2] === true || row[2] === 'TRUE' || row[2] === 'true',
+        primeiraVez: row[3] ? row[3].toString() : null,
+        tipoEstudo: row[4] ? row[4].toString() : null,
+        datasEstudos: row[5] ? row[5].toString().split(',').filter(d => d) : [],
+        revisoesTotal: row[6] ? parseInt(row[6]) : 0,
+        revisoesConcluidas: row[7] ? parseInt(row[7]) : 0,
+        datasRevisoes: row[8] ? row[8].toString().split(',').filter(d => d) : [],
+        questoesFeitas: row[9] ? parseInt(row[9]) : 0,
+        questoesCorretas: row[10] ? parseInt(row[10]) : 0,
+        questoesErradas: row[11] ? parseInt(row[11]) : 0,
+        grauDificuldade: row[12] ? parseInt(row[12]) : null,
+        migracoes: row[13] ? row[13].toString() : '[]'
+      };
+
+      progressos.push(progresso);
+    }
+
+    return {
+      status: 'success',
+      data: progressos
+    };
+  } catch (err) {
+    return {
+      status: 'error',
+      message: 'Erro ao carregar progresso: ' + err.toString()
+    };
+  }
+}
+
+// Salvar ou atualizar progresso de um tema
+function salvarProgresso(ss, progresso) {
+  try {
+    let progressoSheet = ss.getSheetByName("CRONOGRAMA_PROGRESSO");
+
+    // Criar aba se não existir
+    if (!progressoSheet) {
+      progressoSheet = ss.insertSheet("CRONOGRAMA_PROGRESSO");
+      progressoSheet.appendRow([
+        'ID_TEMA', 'SEMANA_ATUAL', 'ESTUDADO', 'PRIMEIRA_VEZ', 'TIPO_ESTUDO',
+        'DATAS_ESTUDOS', 'REVISOES_TOTAL', 'REVISOES_CONCLUIDAS', 'DATAS_REVISOES',
+        'QUESTOES_FEITAS', 'QUESTOES_CORRETAS', 'QUESTOES_ERRADAS',
+        'GRAU_DIFICULDADE', 'MIGRACOES'
+      ]);
+    }
+
+    // Procurar se já existe registro para este tema
+    const lastRow = progressoSheet.getLastRow();
+    let rowIndex = -1;
+
+    if (lastRow > 1) {
+      const ids = progressoSheet.getRange(2, 1, lastRow - 1, 1).getValues();
+      for (let i = 0; i < ids.length; i++) {
+        if (ids[i][0].toString() === progresso.idTema) {
+          rowIndex = i + 2; // +2 porque começamos da linha 2
+          break;
+        }
+      }
+    }
+
+    // Preparar dados para salvar
+    const rowData = [
+      progresso.idTema,
+      progresso.semanaAtual || '',
+      progresso.estudado || false,
+      progresso.primeiraVez || '',
+      progresso.tipoEstudo || '',
+      progresso.datasEstudos ? progresso.datasEstudos.join(',') : '',
+      progresso.revisoesTotal || 0,
+      progresso.revisoesConcluidas || 0,
+      progresso.datasRevisoes ? progresso.datasRevisoes.join(',') : '',
+      progresso.questoesFeitas || 0,
+      progresso.questoesCorretas || 0,
+      progresso.questoesErradas || 0,
+      progresso.grauDificuldade || '',
+      progresso.migracoes || '[]'
+    ];
+
+    if (rowIndex > 0) {
+      // Atualizar registro existente
+      progressoSheet.getRange(rowIndex, 1, 1, 14).setValues([rowData]);
+    } else {
+      // Adicionar novo registro
+      progressoSheet.appendRow(rowData);
+    }
+
+    return {
+      status: 'success'
+    };
+  } catch (err) {
+    return {
+      status: 'error',
+      message: 'Erro ao salvar progresso: ' + err.toString()
     };
   }
 }`;

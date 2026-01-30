@@ -18,10 +18,12 @@ import {
 } from '../types';
 import {
   inicializarCronograma,
-  calcularEstatisticas
+  calcularEstatisticas,
+  carregarCronogramaSync,
+  salvarProgressoTema
 } from '../utils/cronogramaUtils';
 import { TemaDetalhesModal } from './TemaDetalhesModal';
-import { COLOR_STYLES } from '../temasColors';
+import { COLOR_STYLES } from '../temasCentralizados';
 
 interface CronogramaViewProps {
   sheetUrl: string;
@@ -39,23 +41,28 @@ export const CronogramaView: React.FC<CronogramaViewProps> = ({ sheetUrl }) => {
   const [filtroSemana, setFiltroSemana] = useState<number | null>(null);
   const [busca, setBusca] = useState('');
 
-  // Inicializar ou carregar cronograma do localStorage
+  // Carregar cronograma sincronizado do Google Sheets
   useEffect(() => {
-    const carregarDados = () => {
+    const carregarDados = async () => {
+      if (!sheetUrl) {
+        setError('Configure a URL da planilha primeiro');
+        setLoading(false);
+        return;
+      }
+
       try {
         setLoading(true);
 
-        // Tentar carregar do localStorage
-        const cronogramaStr = localStorage.getItem('cronograma_medico');
+        // Carregar cronograma sincronizado (base + progresso)
+        const cronogramaSync = await carregarCronogramaSync(sheetUrl);
 
-        if (cronogramaStr) {
-          const cronogramaExistente = JSON.parse(cronogramaStr);
-          setCronograma(cronogramaExistente);
+        if (cronogramaSync) {
+          setCronograma(cronogramaSync);
         } else {
-          // Inicializar novo cronograma
-          const novoCronograma = inicializarCronograma();
-          localStorage.setItem('cronograma_medico', JSON.stringify(novoCronograma));
-          setCronograma(novoCronograma);
+          // Se não há dados na planilha, usar inicialização local como fallback
+          const cronogramaLocal = inicializarCronograma();
+          setCronograma(cronogramaLocal);
+          setError('Aba CRONOGRAMA não encontrada. Usando dados locais.');
         }
       } catch (err) {
         setError('Erro ao carregar cronograma');
@@ -66,12 +73,19 @@ export const CronogramaView: React.FC<CronogramaViewProps> = ({ sheetUrl }) => {
     };
 
     carregarDados();
-  }, []);
+  }, [sheetUrl]);
 
-  // Atualizar cronograma e salvar no localStorage
-  const atualizarCronograma = (novoState: CronogramaState) => {
+  // Atualizar cronograma e sincronizar com Google Sheets
+  const atualizarCronograma = async (novoState: CronogramaState) => {
     setCronograma(novoState);
-    localStorage.setItem('cronograma_medico', JSON.stringify(novoState));
+    // Não precisa salvar tudo - cada tema individual será salvo quando modificado
+  };
+
+  // Salvar progresso de um tema específico
+  const salvarTema = async (tema: TemaEstudo) => {
+    if (sheetUrl) {
+      await salvarProgressoTema(sheetUrl, tema);
+    }
   };
 
   // Calcular estatísticas
@@ -298,6 +312,7 @@ export const CronogramaView: React.FC<CronogramaViewProps> = ({ sheetUrl }) => {
           sheetUrl={sheetUrl}
           onClose={() => setTemaModal(null)}
           onUpdate={atualizarCronograma}
+          onSalvarProgresso={salvarTema}
         />
       )}
     </div>
