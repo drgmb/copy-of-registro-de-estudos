@@ -23,6 +23,29 @@ export interface ProgressoTema {
   migracoes: string;
 }
 
+// Normalizar difficulty de texto para número
+function normalizarDificuldade(difficulty: any): number | null {
+  if (typeof difficulty === 'number' && difficulty >= 1 && difficulty <= 5) {
+    return difficulty;
+  }
+
+  const diffStr = String(difficulty).toLowerCase();
+  const mapa: Record<string, number> = {
+    'muito fácil': 1,
+    'muito facil': 1,
+    'fácil': 2,
+    'facil': 2,
+    'médio': 3,
+    'medio': 3,
+    'difícil': 4,
+    'dificil': 4,
+    'muito difícil': 5,
+    'muito dificil': 5
+  };
+
+  return mapa[diffStr] || null;
+}
+
 // Processar DATA ENTRY e DIÁRIO para calcular progresso de cada tema
 export function calcularProgressoDeRegistros(
   dataEntry: StudySession[],
@@ -31,16 +54,35 @@ export function calcularProgressoDeRegistros(
   const progressoPorTema = new Map<string, ProgressoTema>();
 
   console.log('🔍 [DEBUG] Processando DATA ENTRY:', dataEntry.length, 'registros');
+  console.log('🔍 [DEBUG] Dados brutos do DATA ENTRY:', JSON.stringify(dataEntry, null, 2));
   console.log('🔍 [DEBUG] Processando DIÁRIO:', diario.length, 'registros');
+  console.log('🔍 [DEBUG] NOME_PARA_ID disponível:', Object.keys(NOME_PARA_ID).slice(0, 10), '... (mostrando 10 de', Object.keys(NOME_PARA_ID).length, ')');
 
   // 1. Processar DATA ENTRY (registros reais de estudo)
   const temasNaoEncontrados: string[] = [];
   dataEntry.forEach((session, idx) => {
+    console.log(`\n🔍 [DEBUG] Registro ${idx + 1}:`, {
+      topic: session.topic,
+      date: session.date,
+      difficulty: session.difficulty,
+      isClass: session.isClass
+    });
+
     const idTema = NOME_PARA_ID[session.topic];
 
     if (!idTema) {
       temasNaoEncontrados.push(session.topic);
       console.warn(`⚠️ Tema não encontrado no mapa: "${session.topic}" (registro ${idx + 1})`);
+
+      // Procurar nomes similares para ajudar no debug
+      const nomesParecidos = Object.keys(NOME_PARA_ID)
+        .filter(nome => nome.toLowerCase().includes(session.topic.toLowerCase().substring(0, 10)))
+        .slice(0, 5);
+
+      if (nomesParecidos.length > 0) {
+        console.log(`  💡 Nomes parecidos encontrados:`, nomesParecidos);
+      }
+
       return;
     }
 
@@ -116,8 +158,9 @@ export function calcularProgressoDeRegistros(
 
     // Grau de Dificuldade (pegar a maior dificuldade registrada)
     if (session.difficulty) {
-      const dificuldade = parseInt(session.difficulty);
-      if (!isNaN(dificuldade) && dificuldade >= 1 && dificuldade <= 5) {
+      const dificuldade = normalizarDificuldade(session.difficulty);
+      console.log(`  🎯 Dificuldade: "${session.difficulty}" → ${dificuldade}`);
+      if (dificuldade !== null) {
         if (progresso.grauDificuldade === null || dificuldade > progresso.grauDificuldade) {
           progresso.grauDificuldade = dificuldade;
         }
@@ -191,7 +234,16 @@ export function calcularProgressoDeRegistros(
 
     progresso.datasEstudos.forEach(dataISO => {
       const dataEstudo = new Date(dataISO);
+      const dataAntesZerarHoras = dataEstudo.toISOString().split('T')[0];
       dataEstudo.setHours(0, 0, 0, 0);
+      const dataDepoisZerarHoras = dataEstudo.toISOString().split('T')[0];
+
+      console.log(`  🕐 Data processamento:`, {
+        original: dataISO,
+        antesZerar: dataAntesZerarHoras,
+        depoisZerar: dataDepoisZerarHoras,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+      });
 
       // Calcular diferença em dias desde o início da Semana 1
       const diffDias = Math.floor((dataEstudo.getTime() - inicioSemana1.getTime()) / (1000 * 60 * 60 * 24));
