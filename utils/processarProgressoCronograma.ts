@@ -102,6 +102,16 @@ export function calcularProgressoDeRegistros(
       progresso.questoesCorretas += session.correctQuestions;
       progresso.questoesErradas += (session.totalQuestions - session.correctQuestions);
     }
+
+    // Grau de Dificuldade (pegar a maior dificuldade registrada)
+    if (session.difficulty) {
+      const dificuldade = parseInt(session.difficulty);
+      if (!isNaN(dificuldade) && dificuldade >= 1 && dificuldade <= 5) {
+        if (progresso.grauDificuldade === null || dificuldade > progresso.grauDificuldade) {
+          progresso.grauDificuldade = dificuldade;
+        }
+      }
+    }
   });
 
   // 2. Processar DIÁRIO (programações/revisões planejadas)
@@ -135,6 +145,68 @@ export function calcularProgressoDeRegistros(
     const acaoLower = registro.acao?.toLowerCase() || '';
     if (acaoLower.includes('revisao') || acaoLower.includes('revisão')) {
       progresso.revisoesTotal++;
+    }
+  });
+
+  // 3. Calcular migração automática baseada nas datas de estudo
+  // Importar TEMAS_POR_ID para pegar semanaOriginal
+  progressoPorTema.forEach((progresso, idTema) => {
+    if (progresso.datasEstudos.length === 0) return;
+
+    // Pegar semana original do tema
+    const { TEMAS_POR_ID } = require('../temasCentralizados');
+    const temaBase = TEMAS_POR_ID[idTema];
+    if (!temaBase) return;
+
+    const semanaOriginal = temaBase.semanaOriginal;
+
+    // Calcular qual semana cada data de estudo cai
+    // Assumindo que semana 1 começa hoje
+    const hoje = new Date();
+    hoje.setHours(0, 0, 0, 0);
+
+    let semanaMaisRecente = semanaOriginal;
+
+    progresso.datasEstudos.forEach(dataISO => {
+      const dataEstudo = new Date(dataISO);
+      dataEstudo.setHours(0, 0, 0, 0);
+
+      // Calcular diferença em dias
+      const diffDias = Math.floor((dataEstudo.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+
+      // Calcular em qual semana a data cai (cada semana = 7 dias)
+      const semanaData = Math.floor(diffDias / 7) + 1;
+
+      // Se a data está numa semana válida (1-30)
+      if (semanaData >= 1 && semanaData <= 30) {
+        // Usar a semana mais recente
+        if (semanaData > semanaMaisRecente) {
+          semanaMaisRecente = semanaData;
+        }
+      }
+    });
+
+    // Se a semana mudou, criar log de migração
+    if (semanaMaisRecente !== semanaOriginal) {
+      const migracoes = progresso.migracoes ? JSON.parse(progresso.migracoes) : [];
+
+      // Verificar se já não tem essa migração
+      const jaMigrado = migracoes.some(
+        (m: any) => m.de === semanaOriginal && m.para === semanaMaisRecente
+      );
+
+      if (!jaMigrado) {
+        migracoes.push({
+          de: semanaOriginal,
+          para: semanaMaisRecente,
+          data: new Date().toISOString()
+        });
+        progresso.migracoes = JSON.stringify(migracoes);
+      }
+
+      progresso.semanaAtual = semanaMaisRecente;
+    } else {
+      progresso.semanaAtual = semanaOriginal;
     }
   });
 
