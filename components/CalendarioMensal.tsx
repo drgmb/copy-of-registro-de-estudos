@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 
 interface DiaCalendario {
   data: Date;
@@ -15,6 +16,9 @@ interface CalendarioMensalProps {
   onDiaClick: (data: Date) => void;
   diasComAtividades?: { [dataISO: string]: { temas: number; revisoes: number } };
   dataInicioCronograma: Date; // Data de início do cronograma (semana 1: 25/01/2026)
+  onMesAnterior?: () => void; // Navegar para o mês anterior
+  onMesProximo?: () => void; // Navegar para o mês próximo
+  onVoltarParaHoje?: () => void; // Voltar para o mês atual
 }
 
 export const CalendarioMensal: React.FC<CalendarioMensalProps> = ({
@@ -22,6 +26,9 @@ export const CalendarioMensal: React.FC<CalendarioMensalProps> = ({
   onDiaClick,
   diasComAtividades = {},
   dataInicioCronograma,
+  onMesAnterior,
+  onMesProximo,
+  onVoltarParaHoje,
 }) => {
   const hoje = useMemo(() => {
     const now = new Date();
@@ -124,14 +131,74 @@ export const CalendarioMensal: React.FC<CalendarioMensalProps> = ({
 
   const diasDaSemana = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
+  // Verificar se pode navegar
+  const podeVoltarMes = mesAtual.getMonth() > 0; // Não pode voltar antes de Janeiro
+  const podeAvancarMes = mesAtual.getMonth() < 11; // Não pode avançar depois de Dezembro
+
+  // Verificar se está no mês atual
+  const agora = new Date();
+  const estahNoMesAtual =
+    agora.getFullYear() === 2026 &&
+    mesAtual.getMonth() === agora.getMonth();
+
   return (
     <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-      {/* Header - Mês fixo */}
-      <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 px-4 py-4 flex items-center justify-center">
-        <div className="text-center text-white">
-          <h2 className="text-lg font-bold">Janeiro 2026</h2>
-          <p className="text-xs text-indigo-100 mt-1">Semanas 1 a 30 do Cronograma</p>
+      {/* Header com navegação */}
+      <div className="bg-gradient-to-r from-indigo-500 to-indigo-600 px-4 py-4">
+        <div className="flex items-center justify-between">
+          {/* Botão Mês Anterior */}
+          <button
+            onClick={onMesAnterior}
+            disabled={!podeVoltarMes || !onMesAnterior}
+            className={`
+              flex items-center justify-center w-8 h-8 rounded-full transition-all
+              ${podeVoltarMes && onMesAnterior
+                ? 'hover:bg-indigo-400 text-white cursor-pointer'
+                : 'opacity-30 cursor-not-allowed'
+              }
+            `}
+            title="Mês anterior"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+
+          {/* Título do Mês */}
+          <div className="flex-1 text-center text-white">
+            <h2 className="text-lg font-bold">
+              {nomesMeses[mesAtual.getMonth()]} {mesAtual.getFullYear()}
+            </h2>
+            <p className="text-xs text-indigo-100 mt-1">Semanas 1 a 30 do Cronograma</p>
+          </div>
+
+          {/* Botão Mês Próximo */}
+          <button
+            onClick={onMesProximo}
+            disabled={!podeAvancarMes || !onMesProximo}
+            className={`
+              flex items-center justify-center w-8 h-8 rounded-full transition-all
+              ${podeAvancarMes && onMesProximo
+                ? 'hover:bg-indigo-400 text-white cursor-pointer'
+                : 'opacity-30 cursor-not-allowed'
+              }
+            `}
+            title="Próximo mês"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
         </div>
+
+        {/* Botão "Voltar para Hoje" - apenas se não estiver no mês atual */}
+        {!estahNoMesAtual && onVoltarParaHoje && (
+          <div className="mt-3 text-center">
+            <button
+              onClick={onVoltarParaHoje}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-400 hover:bg-indigo-300 text-white text-xs font-medium rounded-full transition-colors"
+            >
+              <Calendar className="w-3.5 h-3.5" />
+              Voltar para Hoje
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Dias da semana */}

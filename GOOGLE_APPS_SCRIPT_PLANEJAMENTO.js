@@ -68,10 +68,25 @@ function getDiario() {
 }
 
 /**
- * FUNÇÃO AUXILIAR: Converter string YYYY-MM-DD para Date
+ * FUNÇÃO AUXILIAR: Converter string YYYY-MM-DD ou ISO completo para Date
+ * Aceita formatos:
+ * - YYYY-MM-DD (ex: 2026-01-30)
+ * - ISO completo (ex: 2026-01-30T03:00:00.000Z)
  */
 function converterDataISO(dataString) {
   try {
+    if (!dataString) {
+      throw new Error('Data não fornecida');
+    }
+
+    // Converter para string e remover espaços
+    dataString = String(dataString).trim();
+
+    // Se a data contém 'T' (formato ISO completo), extrair apenas a parte da data
+    if (dataString.indexOf('T') !== -1) {
+      dataString = dataString.split('T')[0];
+    }
+
     // Extrair ano, mês e dia da string YYYY-MM-DD
     var partes = dataString.split('-');
     if (partes.length !== 3) {
@@ -90,9 +105,10 @@ function converterDataISO(dataString) {
       throw new Error('Data inválida: ' + dataString);
     }
 
+    Logger.log('✅ Data convertida: ' + dataString + ' -> ' + dataObj);
     return dataObj;
   } catch (error) {
-    Logger.log('❌ Erro ao converter data: ' + error.message);
+    Logger.log('❌ Erro ao converter data "' + dataString + '": ' + error.message);
     throw error;
   }
 }

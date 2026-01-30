@@ -146,6 +146,47 @@ export const PlanejamentoView: React.FC<PlanejamentoViewProps> = ({ sheetUrl }) 
     }
   };
 
+  // Funções de navegação do calendário
+  const handleMesAnterior = () => {
+    setMesAtual((prev) => {
+      const novaData = new Date(prev);
+      novaData.setMonth(novaData.getMonth() - 1);
+
+      // Não permitir voltar antes de Janeiro 2026
+      if (novaData.getFullYear() < 2026) {
+        return prev;
+      }
+
+      return novaData;
+    });
+  };
+
+  const handleMesProximo = () => {
+    setMesAtual((prev) => {
+      const novaData = new Date(prev);
+      novaData.setMonth(novaData.getMonth() + 1);
+
+      // Não permitir avançar depois de Dezembro 2026
+      if (novaData.getFullYear() > 2026) {
+        return prev;
+      }
+
+      return novaData;
+    });
+  };
+
+  const handleVoltarParaHoje = () => {
+    const agora = new Date();
+
+    // Se estamos em 2026, ir para o mês atual
+    if (agora.getFullYear() === 2026) {
+      setMesAtual(new Date(2026, agora.getMonth(), 1));
+    } else {
+      // Se não estamos em 2026, ir para Janeiro 2026
+      setMesAtual(new Date(2026, 0, 1));
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-12 text-gray-500">
@@ -209,6 +250,9 @@ export const PlanejamentoView: React.FC<PlanejamentoViewProps> = ({ sheetUrl }) 
         onDiaClick={handleDiaClick}
         diasComAtividades={diasComAtividades}
         dataInicioCronograma={dataInicioCronograma}
+        onMesAnterior={handleMesAnterior}
+        onMesProximo={handleMesProximo}
+        onVoltarParaHoje={handleVoltarParaHoje}
       />
 
       {/* Modal de detalhes do dia */}

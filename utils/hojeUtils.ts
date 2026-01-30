@@ -35,6 +35,12 @@ function normalizarData(data: Date): Date {
 
 // Converter data DD/MM/YYYY para formato ISO (YYYY-MM-DD)
 function converterDDMMYYYYparaISO(dataDDMMYYYY: string): string {
+  // Se contém 'T', é um formato ISO completo (ex: 2026-01-30T03:00:00.000Z)
+  // Extrair apenas a parte da data
+  if (dataDDMMYYYY.includes('T')) {
+    return dataDDMMYYYY.split('T')[0];
+  }
+
   // Aceitar tanto DD/MM/YYYY quanto YYYY-MM-DD (já em ISO)
   if (dataDDMMYYYY.includes('-') && dataDDMMYYYY.length === 10) {
     // Já está em formato ISO
