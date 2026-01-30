@@ -160,10 +160,17 @@ export function calcularProgressoDeRegistros(
 
     const semanaOriginal = temaBase.semanaOriginal;
 
-    // Calcular qual semana cada data de estudo cai
-    // Assumindo que semana 1 começa hoje
+    // Data de início do cronograma (Semana 1 começou no domingo mais recente)
+    // Encontrar o domingo mais recente ou hoje se for domingo
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
+
+    const diaDaSemana = hoje.getDay(); // 0 = domingo, 1 = segunda, ..., 6 = sábado
+    const diasDesdeUltimoDomingo = diaDaSemana === 0 ? 0 : diaDaSemana;
+
+    const inicioSemana1 = new Date(hoje);
+    inicioSemana1.setDate(hoje.getDate() - diasDesdeUltimoDomingo);
+    inicioSemana1.setHours(0, 0, 0, 0);
 
     let semanaMaisRecente = semanaOriginal;
 
@@ -171,16 +178,19 @@ export function calcularProgressoDeRegistros(
       const dataEstudo = new Date(dataISO);
       dataEstudo.setHours(0, 0, 0, 0);
 
-      // Calcular diferença em dias
-      const diffDias = Math.floor((dataEstudo.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24));
+      // Calcular diferença em dias desde o início da Semana 1
+      const diffDias = Math.floor((dataEstudo.getTime() - inicioSemana1.getTime()) / (1000 * 60 * 60 * 24));
 
-      // Calcular em qual semana a data cai (cada semana = 7 dias)
+      // Calcular em qual semana a data cai
+      // Semana 1: dias 0-6 (domingo a sábado)
+      // Semana 2: dias 7-13
+      // etc.
       const semanaData = Math.floor(diffDias / 7) + 1;
 
       // Se a data está numa semana válida (1-30)
       if (semanaData >= 1 && semanaData <= 30) {
-        // Usar a semana mais recente
-        if (semanaData > semanaMaisRecente) {
+        // Migrar para a semana onde o tema foi estudado
+        if (semanaData !== semanaOriginal) {
           semanaMaisRecente = semanaData;
         }
       }

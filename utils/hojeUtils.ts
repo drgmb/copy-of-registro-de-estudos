@@ -33,6 +33,25 @@ function normalizarData(data: Date): Date {
   return normalizada;
 }
 
+// Converter data DD/MM/YYYY para formato ISO (YYYY-MM-DD)
+function converterDDMMYYYYparaISO(dataDDMMYYYY: string): string {
+  // Aceitar tanto DD/MM/YYYY quanto YYYY-MM-DD (já em ISO)
+  if (dataDDMMYYYY.includes('-') && dataDDMMYYYY.length === 10) {
+    // Já está em formato ISO
+    return dataDDMMYYYY;
+  }
+
+  // Converter DD/MM/YYYY para YYYY-MM-DD
+  const partes = dataDDMMYYYY.split('/');
+  if (partes.length !== 3) {
+    console.warn('Formato de data inválido:', dataDDMMYYYY);
+    return dataDDMMYYYY; // Retornar como está
+  }
+
+  const [dia, mes, ano] = partes;
+  return `${ano}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
+}
+
 // Verificar se duas datas são do mesmo dia
 function mesmaData(data1: Date, data2: Date): boolean {
   return (
@@ -323,7 +342,13 @@ export async function carregarDiario(sheetUrl: string): Promise<RegistroDiario[]
       return [];
     }
 
-    return result.data || [];
+    const data: RegistroDiario[] = result.data || [];
+
+    // Converter datas de DD/MM/YYYY para ISO (YYYY-MM-DD)
+    return data.map(registro => ({
+      ...registro,
+      data: converterDDMMYYYYparaISO(registro.data)
+    }));
   } catch (error) {
     console.error('Erro ao carregar diário:', error);
     return [];
@@ -356,7 +381,13 @@ export async function carregarDataEntry(
       return [];
     }
 
-    return result.data || [];
+    const data: StudySession[] = result.data || [];
+
+    // Converter datas de DD/MM/YYYY para ISO (YYYY-MM-DD)
+    return data.map(session => ({
+      ...session,
+      date: converterDDMMYYYYparaISO(session.date)
+    }));
   } catch (error) {
     console.error('Erro ao carregar data entry:', error);
     return [];
