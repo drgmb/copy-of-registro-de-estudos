@@ -23,6 +23,49 @@ export interface ProgressoTema {
   migracoes: string;
 }
 
+// Normalizar nome de tema para matching (remove espaços e lowercase)
+function normalizarNomeTema(nome: string): string {
+  return nome.replace(/\s+/g, '').toLowerCase();
+}
+
+// Criar mapa de busca normalizado para matching flexível
+function criarMapaNormalizado(nomeParaId: Record<string, string>): {
+  original: Record<string, string>;
+  normalizado: Record<string, string>;
+} {
+  const normalizado: Record<string, string> = {};
+
+  Object.entries(nomeParaId).forEach(([nome, id]) => {
+    const nomeNorm = normalizarNomeTema(nome);
+    normalizado[nomeNorm] = id;
+  });
+
+  return {
+    original: nomeParaId,
+    normalizado
+  };
+}
+
+// Buscar tema com matching flexível (remove espaços)
+function buscarTema(topicName: string, nomeParaId: Record<string, string>): string | null {
+  // Tentativa 1: Match exato
+  if (nomeParaId[topicName]) {
+    return nomeParaId[topicName];
+  }
+
+  // Tentativa 2: Match normalizado (sem espaços, lowercase)
+  const normalizado = normalizarNomeTema(topicName);
+
+  for (const [nome, id] of Object.entries(nomeParaId)) {
+    if (normalizarNomeTema(nome) === normalizado) {
+      console.log(`  🔄 Match normalizado: "${topicName}" → "${nome}" (ID: ${id})`);
+      return id;
+    }
+  }
+
+  return null;
+}
+
 // Normalizar difficulty de texto para número
 function normalizarDificuldade(difficulty: any): number | null {
   if (typeof difficulty === 'number' && difficulty >= 1 && difficulty <= 5) {
@@ -68,19 +111,25 @@ export function calcularProgressoDeRegistros(
       isClass: session.isClass
     });
 
-    const idTema = NOME_PARA_ID[session.topic];
+    const idTema = buscarTema(session.topic, NOME_PARA_ID);
 
     if (!idTema) {
       temasNaoEncontrados.push(session.topic);
       console.warn(`⚠️ Tema não encontrado no mapa: "${session.topic}" (registro ${idx + 1})`);
 
       // Procurar nomes similares para ajudar no debug
+      const topicNorm = normalizarNomeTema(session.topic);
       const nomesParecidos = Object.keys(NOME_PARA_ID)
-        .filter(nome => nome.toLowerCase().includes(session.topic.toLowerCase().substring(0, 10)))
+        .filter(nome => {
+          const nomeNorm = normalizarNomeTema(nome);
+          return nomeNorm.includes(topicNorm.substring(0, Math.min(10, topicNorm.length)));
+        })
         .slice(0, 5);
 
       if (nomesParecidos.length > 0) {
         console.log(`  💡 Nomes parecidos encontrados:`, nomesParecidos);
+        console.log(`  🔍 Versão normalizada buscada: "${topicNorm}"`);
+        console.log(`  🔍 Exemplos normalizados:`, nomesParecidos.map(n => normalizarNomeTema(n)));
       }
 
       return;
