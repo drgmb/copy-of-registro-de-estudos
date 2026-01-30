@@ -103,9 +103,66 @@ export enum AppStatus {
   ERROR = 'ERROR'
 }
 
-// Cronograma
+// Cronograma - Sistema de 30 Semanas
+export type CorRelevancia = 'VERDE' | 'AMARELO' | 'VERMELHO' | 'ROXO';
+
+export interface TemaEstudo {
+  id: string; // UUID
+  nome: string;
+  cor: CorRelevancia;
+
+  // Posicionamento
+  semanaOriginal: number; // 1-30
+  semanaAtual: number; // 1-30
+
+  // Status básico
+  estudado: boolean;
+  primeiraVisualizacao: string | null; // ISO date
+
+  // Tipo de estudo
+  apenasAula: boolean;
+  aulaERevisao: boolean;
+  apenasRevisao: boolean;
+  datasEstudos: string[]; // Array de ISO dates
+
+  // Revisões
+  revisoesTotal: number;
+  revisoesConcluidas: number;
+  datasRevisoes: string[]; // ISO dates
+
+  // Questões
+  questoesFeitas: number;
+  questoesCorretas: number;
+  questoesErradas: number;
+
+  // Avaliação subjetiva
+  grauDificuldade: 1 | 2 | 3 | 4 | 5 | null;
+
+  // Histórico
+  logMigracoes: {
+    de: number;
+    para: number;
+    data: string; // ISO date
+  }[];
+}
+
+export interface SemanaEstudo {
+  numero: number; // 1-30
+  dataInicio: string; // ISO date
+  dataTermino: string; // ISO date
+  temas: TemaEstudo[];
+}
+
+export interface CronogramaState {
+  semanas: SemanaEstudo[];
+  dataInicialCronograma: string; // ISO date - quando o cronograma foi criado
+  ultimaAtualizacao: string; // ISO date
+}
+
+// Tipos antigos mantidos para compatibilidade (deprecated)
 export interface CronogramaTema {
   tema: string;
+  cor: 'VERDE' | 'AMARELO' | 'VERMELHO' | 'ROXO';
   status: 'Pendente' | 'Estudado';
   dataEstudo?: string;
   semana: number;
@@ -149,4 +206,80 @@ export interface TemaDetalhado {
   totalAcertos: number;
   quantidadeRevisoes: number;
   revisoes: RevisaoDetalhe[];
+}
+
+// Aba HOJE - Dashboard de Atividades Diárias
+export type StatusAtividade = 'CONCLUIDO' | 'PENDENTE' | 'ATRASADO' | 'FORA_PROGRAMADO';
+export type TipoAtividade = 'PRIMEIRA_VEZ' | 'REVISAO';
+export type TipoForaPrograma = 'ANTECIPADO' | 'ATRASADO_CONCLUIDO' | 'EXTRA';
+
+export interface AtividadeDia {
+  // Identificação
+  id: string;
+  temaId: string;
+  temaNome: string;
+  temaCor: CorRelevancia;
+
+  // Tipo e Status
+  tipo: TipoAtividade;
+  numeroRevisao?: number;
+  status: StatusAtividade;
+
+  // Datas e Timing
+  dataProgramada: Date;
+  dataRealizada?: Date;
+  horaRealizada?: string;
+  diasDeAtraso?: number; // Positivo = atrasado, Negativo = antecipado
+
+  // Performance (se aplicável)
+  questoesFeitas?: number;
+  questoesCorretas?: number;
+  percentualAcerto?: number;
+
+  // Categorização especial
+  foraPrograma?: {
+    tipo: TipoForaPrograma;
+    diasDiferenca: number;
+    dataOriginal?: Date;
+  };
+
+  // Origem dos dados
+  origem: {
+    diario: boolean;
+    dataEntry: boolean;
+  };
+}
+
+export interface EstatisticasDia {
+  totalProgramadas: number;
+  totalRealizadas: number;
+  taxaConclusao: number; // 0-100
+  performanceMedia: number; // 0-100
+
+  // Breakdown por tipo
+  primeiraVez: {
+    programadas: number;
+    concluidas: number;
+  };
+  revisoes: {
+    programadas: number;
+    concluidas: number;
+  };
+}
+
+export interface EstadoAbaHoje {
+  dataAtual: Date;
+  concluidos: AtividadeDia[];
+  pendentes: AtividadeDia[];
+  atrasados: AtividadeDia[];
+  foraPrograma: AtividadeDia[];
+  stats: EstatisticasDia;
+}
+
+// Estrutura do DIÁRIO na planilha
+export interface RegistroDiario {
+  data: string; // ISO date
+  tema: string;
+  acao: string; // "Primeira vez" ou "Revisão"
+  semana?: number;
 }

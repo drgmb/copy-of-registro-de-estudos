@@ -86,6 +86,21 @@ function doGet(e) {
         .setMimeType(ContentService.MimeType.JSON);
     }
 
+    if (action === 'getCronogramaCompleto') {
+      return ContentService.createTextOutput(JSON.stringify(getCronogramaCompleto(ss)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (action === 'getDiario') {
+      return ContentService.createTextOutput(JSON.stringify(getDiario(ss)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    if (action === 'getAllStudySessions') {
+      return ContentService.createTextOutput(JSON.stringify(getAllStudySessions(ss)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
     return ContentService.createTextOutput(JSON.stringify({ 'status': 'ok' }))
       .setMimeType(ContentService.MimeType.JSON);
 
@@ -119,7 +134,15 @@ function doPost(e) {
       })).setMimeType(ContentService.MimeType.JSON);
     }
 
+    const action = e.parameter.action || '';
     const type = e.parameter.type || 'study';
+
+    // Handler para salvar cronograma
+    if (action === 'saveCronograma') {
+      const dataStr = e.parameter.data || '';
+      return ContentService.createTextOutput(JSON.stringify(saveCronograma(ss, dataStr)))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
 
     if (type === 'simulado') {
       // Processar dados de simulado
@@ -1611,6 +1634,10 @@ function getMetricas(ss, periodo) {
   // Process DATA ENTRY within date range
   for (let i = 1; i < dataEntryData.length; i++) {
     const dataRef = dataEntryData[i][8]; // DATA_REF
+
+    // Skip if dataRef is not valid
+    if (!dataRef || typeof dataRef !== 'string') continue;
+
     const parts = dataRef.split('/');
     if (parts.length !== 3) continue;
 
@@ -1692,6 +1719,9 @@ function getListaMestraTemas(ss) {
     const correctQuestions = parseInt(dataEntryData[i][7]) || 0;
     const dataRef = dataEntryData[i][8];
 
+    // Skip if tema or dataRef is not valid
+    if (!tema || !dataRef || typeof dataRef !== 'string') continue;
+
     if (temasMap[tema]) {
       if (isQuestions) {
         temasMap[tema].totalQuestoes += totalQuestions;
@@ -1735,6 +1765,180 @@ function getListaMestraTemas(ss) {
     status: 'success',
     data: temas
   };
+}
+
+// ==========================================
+// FUNÇÕES DO CRONOGRAMA
+// ==========================================
+
+// Carregar cronograma completo
+function getCronogramaCompleto(ss) {
+  try {
+    // Tentar carregar da aba CRONOGRAMA
+    let cronogramaSheet = ss.getSheetByName("CRONOGRAMA");
+
+    if (!cronogramaSheet) {
+      // Se não existe, retornar null para inicializar no frontend
+      return {
+        status: 'success',
+        data: null
+      };
+    }
+
+    const data = cronogramaSheet.getRange("A2").getValue();
+
+    if (!data) {
+      return {
+        status: 'success',
+        data: null
+      };
+    }
+
+    // Parse JSON
+    const cronograma = JSON.parse(data);
+
+    return {
+      status: 'success',
+      data: cronograma
+    };
+  } catch (err) {
+    return {
+      status: 'error',
+      message: 'Erro ao carregar cronograma: ' + err.toString()
+    };
+  }
+}
+
+// Salvar cronograma completo
+function saveCronograma(ss, dataStr) {
+  try {
+    let cronogramaSheet = ss.getSheetByName("CRONOGRAMA");
+
+    // Criar aba se não existir
+    if (!cronogramaSheet) {
+      cronogramaSheet = ss.insertSheet("CRONOGRAMA");
+      cronogramaSheet.appendRow(["DADOS_CRONOGRAMA"]);
+    }
+
+    // Salvar JSON na célula A2
+    cronogramaSheet.getRange("A2").setValue(dataStr);
+
+    return {
+      status: 'success',
+      message: 'Cronograma salvo com sucesso'
+    };
+  } catch (err) {
+    return {
+      status: 'error',
+      message: 'Erro ao salvar cronograma: ' + err.toString()
+    };
+  }
+}
+
+// ==========================================
+// FUNÇÕES DA ABA HOJE - DIÁRIO
+// ==========================================
+
+// Buscar todos os registros do DIÁRIO
+function getDiario(ss) {
+  try {
+    const diarioSheet = ss.getSheetByName("DIÁRIO");
+
+    if (!diarioSheet) {
+      return {
+        status: 'success',
+        data: []
+      };
+    }
+
+    const lastRow = diarioSheet.getLastRow();
+    if (lastRow <= 1) {
+      return {
+        status: 'success',
+        data: []
+      };
+    }
+
+    // Buscar dados da aba DIÁRIO
+    // Assumindo estrutura: Data | Tema | Ação | Semana
+    const data = diarioSheet.getRange(2, 1, lastRow - 1, 4).getValues();
+
+    const registros = [];
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
+      if (!row[0] || !row[1]) continue; // Pular linhas vazias
+
+      registros.push({
+        data: row[0] instanceof Date ? row[0].toISOString() : new Date(row[0]).toISOString(),
+        tema: row[1].toString(),
+        acao: row[2] ? row[2].toString() : 'Primeira vez',
+        semana: row[3] ? parseInt(row[3]) : null
+      });
+    }
+
+    return {
+      status: 'success',
+      data: registros
+    };
+  } catch (err) {
+    return {
+      status: 'error',
+      message: 'Erro ao carregar diário: ' + err.toString()
+    };
+  }
+}
+
+// Buscar todas as sessões de estudo do DATA ENTRY
+function getAllStudySessions(ss) {
+  try {
+    const dataEntrySheet = ss.getSheetByName("DATA ENTRY");
+
+    if (!dataEntrySheet) {
+      return {
+        status: 'success',
+        data: []
+      };
+    }
+
+    const lastRow = dataEntrySheet.getLastRow();
+    if (lastRow <= 1) {
+      return {
+        status: 'success',
+        data: []
+      };
+    }
+
+    // Buscar dados da aba DATA ENTRY
+    // Assumindo estrutura: Data | Tema | Detalhes | Dificuldade | É Aula? | Questões? | Total | Corretas
+    const data = dataEntrySheet.getRange(2, 1, lastRow - 1, 8).getValues();
+
+    const sessions = [];
+    for (let i = 0; i < data.length; i++) {
+      const row = data[i];
+      if (!row[0] || !row[1]) continue; // Pular linhas vazias
+
+      sessions.push({
+        date: row[0] instanceof Date ? row[0].toISOString() : new Date(row[0]).toISOString(),
+        topic: row[1].toString(),
+        details: row[2] ? row[2].toString() : '',
+        difficulty: row[3] ? row[3].toString() : '',
+        isClass: row[4] ? row[4].toString().toLowerCase() === 'sim' || row[4].toString().toLowerCase() === 'true' : false,
+        isQuestions: row[5] ? row[5].toString().toLowerCase() === 'sim' || row[5].toString().toLowerCase() === 'true' : false,
+        totalQuestions: row[6] ? parseInt(row[6]) : 0,
+        correctQuestions: row[7] ? parseInt(row[7]) : 0
+      });
+    }
+
+    return {
+      status: 'success',
+      data: sessions
+    };
+  } catch (err) {
+    return {
+      status: 'error',
+      message: 'Erro ao carregar sessões de estudo: ' + err.toString()
+    };
+  }
 }`;
 
   return (

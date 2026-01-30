@@ -3,11 +3,10 @@ import { StudyForm } from './components/StudyForm';
 import { SimuladosForm } from './components/SimuladosForm';
 import { ConfigModal } from './components/ConfigModal';
 import { ChangeLogDisplay } from './components/ChangeLogDisplay';
+import { CronogramaView } from './components/CronogramaView';
 import { HojeView } from './components/HojeView';
-import { DashboardView } from './components/DashboardView';
-import { VisaoGeralView } from './components/VisaoGeralView';
-import { StudySession, SimuladoSession, AppStatus, ChangeLogEntry } from './types';
-import { Settings, GraduationCap, AlertCircle, BookOpen, FileText, Calendar, BarChart3, Eye } from 'lucide-react';
+import { StudySession, SimuladoSession, AppStatus, ChangeLogEntry, AtividadeDia } from './types';
+import { Settings, GraduationCap, AlertCircle, BookOpen, FileText, Calendar, Home } from 'lucide-react';
 
 // Lista exata de arquivos na pasta public/Fotos (47 fotos)
 const PHOTO_FILENAMES = [
@@ -60,13 +59,13 @@ const PHOTO_FILENAMES = [
   "PHOTO-2026-01-28-17-37-20.jpg"
 ];
 
-type TabType = 'temas' | 'simulados' | 'hoje' | 'dashboard' | 'visao-geral';
+type TabType = 'temas' | 'simulados' | 'cronograma' | 'hoje';
 
 const App: React.FC = () => {
   const [status, setStatus] = useState<AppStatus>(AppStatus.IDLE);
   const [sheetUrl, setSheetUrl] = useState<string>('');
   const [isConfigOpen, setIsConfigOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<TabType>('hoje');
+  const [activeTab, setActiveTab] = useState<TabType>('temas');
 
   // State to manage the active image source and fallback status
   const [currentImageSrc, setCurrentImageSrc] = useState<string>('');
@@ -81,6 +80,17 @@ const App: React.FC = () => {
 
   // Pre-fill data for StudyForm (when clicking from HojeView)
   const [preFillTopic, setPreFillTopic] = useState<string>('');
+
+  // Navigation callbacks for HojeView
+  const handleNavigateToCronograma = (temaId: string) => {
+    setActiveTab('cronograma');
+    // TODO: Scroll to tema and open modal when implemented
+  };
+
+  const handleNavigateToRegistro = (atividade: AtividadeDia) => {
+    setPreFillTopic(atividade.temaNome);
+    setActiveTab('temas');
+  };
 
   // Load URL from local storage on mount
   useEffect(() => {
@@ -219,12 +229,6 @@ const App: React.FC = () => {
     setPreFillTopic('');
   };
 
-  const handleReviewClick = (tema: string) => {
-    setPreFillTopic(tema);
-    setActiveTab('temas');
-    resetForm();
-  };
-
   return (
     // Updated container: reduced padding for small iframe/sidebar support
     <div className="min-h-screen w-full flex flex-col items-center bg-gray-50/50">
@@ -256,51 +260,6 @@ const App: React.FC = () => {
           <div className="flex gap-1 overflow-x-auto">
             <button
               onClick={() => {
-                setActiveTab('hoje');
-                resetForm();
-              }}
-              className={`
-                flex items-center gap-2 px-3 py-3 font-medium text-xs sm:text-sm transition-all border-b-2 whitespace-nowrap
-                ${activeTab === 'hoje'
-                  ? 'text-green-600 border-green-600'
-                  : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'}
-              `}
-            >
-              <Calendar className="w-4 h-4" />
-              Hoje
-            </button>
-            <button
-              onClick={() => {
-                setActiveTab('dashboard');
-                resetForm();
-              }}
-              className={`
-                flex items-center gap-2 px-3 py-3 font-medium text-xs sm:text-sm transition-all border-b-2 whitespace-nowrap
-                ${activeTab === 'dashboard'
-                  ? 'text-orange-600 border-orange-600'
-                  : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'}
-              `}
-            >
-              <BarChart3 className="w-4 h-4" />
-              Dashboard
-            </button>
-            <button
-              onClick={() => {
-                setActiveTab('visao-geral');
-                resetForm();
-              }}
-              className={`
-                flex items-center gap-2 px-3 py-3 font-medium text-xs sm:text-sm transition-all border-b-2 whitespace-nowrap
-                ${activeTab === 'visao-geral'
-                  ? 'text-purple-600 border-purple-600'
-                  : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'}
-              `}
-            >
-              <Eye className="w-4 h-4" />
-              Visão Geral
-            </button>
-            <button
-              onClick={() => {
                 setActiveTab('temas');
                 resetForm();
               }}
@@ -328,6 +287,36 @@ const App: React.FC = () => {
             >
               <FileText className="w-4 h-4" />
               Simulados
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab('cronograma');
+                resetForm();
+              }}
+              className={`
+                flex items-center gap-2 px-3 py-3 font-medium text-xs sm:text-sm transition-all border-b-2 whitespace-nowrap
+                ${activeTab === 'cronograma'
+                  ? 'text-green-600 border-green-600'
+                  : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'}
+              `}
+            >
+              <Calendar className="w-4 h-4" />
+              Cronograma
+            </button>
+            <button
+              onClick={() => {
+                setActiveTab('hoje');
+                resetForm();
+              }}
+              className={`
+                flex items-center gap-2 px-3 py-3 font-medium text-xs sm:text-sm transition-all border-b-2 whitespace-nowrap
+                ${activeTab === 'hoje'
+                  ? 'text-blue-600 border-blue-600'
+                  : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300'}
+              `}
+            >
+              <Home className="w-4 h-4" />
+              Hoje
             </button>
           </div>
         </div>
@@ -401,35 +390,21 @@ const App: React.FC = () => {
             </div>
           ) : (
             <>
-              {activeTab === 'hoje' && sheetUrl && (
-                <HojeView sheetUrl={sheetUrl} onReviewClick={handleReviewClick} />
-              )}
-              {activeTab === 'dashboard' && sheetUrl && (
-                <DashboardView sheetUrl={sheetUrl} />
-              )}
-              {activeTab === 'visao-geral' && sheetUrl && (
-                <VisaoGeralView sheetUrl={sheetUrl} />
-              )}
               {activeTab === 'temas' && (
                 <StudyForm onSubmit={handleSubmit} status={status} preFillTopic={preFillTopic} />
               )}
               {activeTab === 'simulados' && (
                 <SimuladosForm onSubmit={handleSubmit} status={status} />
               )}
-              {(activeTab === 'hoje' || activeTab === 'dashboard' || activeTab === 'visao-geral') && !sheetUrl && (
-                <div className="text-center py-12">
-                  <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
-                  <h3 className="text-lg font-bold text-gray-800 mb-2">Configure sua planilha</h3>
-                  <p className="text-gray-600 text-sm mb-4">
-                    Para visualizar {activeTab === 'hoje' ? 'as revisões de hoje' : activeTab === 'visao-geral' ? 'a visão geral' : 'o dashboard'}, você precisa configurar a URL da planilha Google.
-                  </p>
-                  <button
-                    onClick={() => setIsConfigOpen(true)}
-                    className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition-colors"
-                  >
-                    Configurar Agora
-                  </button>
-                </div>
+              {activeTab === 'cronograma' && (
+                <CronogramaView sheetUrl={sheetUrl} />
+              )}
+              {activeTab === 'hoje' && (
+                <HojeView
+                  sheetUrl={sheetUrl}
+                  onNavigateToCronograma={handleNavigateToCronograma}
+                  onNavigateToRegistro={handleNavigateToRegistro}
+                />
               )}
             </>
           )}

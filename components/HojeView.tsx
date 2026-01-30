@@ -1,112 +1,137 @@
-import React, { useState, useEffect } from 'react';
-import { DiaryData, DiaryReview } from '../types';
-import { CronogramaView } from './CronogramaView';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Calendar,
-  CheckCircle2,
-  Circle,
+  CheckCircle,
   Clock,
+  AlertTriangle,
+  AlertCircle as AlertCircleIcon,
   TrendingUp,
-  AlertCircle,
-  Target,
-  BarChart3,
+  Calendar as CalendarIcon,
+  BookOpen,
   RefreshCw,
+  FileText,
   Loader2,
-  CalendarCheck,
-  CalendarX,
   Filter,
-  Flame,
-  Zap,
-  Check,
-  CalendarDays
+  X
 } from 'lucide-react';
+import {
+  AtividadeDia,
+  EstadoAbaHoje,
+  TipoAtividade,
+  CorRelevancia
+} from '../types';
+import {
+  processarAtividadesDia,
+  carregarDiario,
+  carregarDataEntry,
+  formatarData,
+  obterMensagemMotivacional
+} from '../utils/hojeUtils';
+import { COLOR_STYLES } from '../temasColors';
 
 interface HojeViewProps {
   sheetUrl: string;
-  onReviewClick: (tema: string) => void;
+  onNavigateToCronograma?: (temaId: string) => void;
+  onNavigateToRegistro?: (atividade: AtividadeDia) => void;
 }
 
-type PeriodFilter = 'hoje' | 'semana' | 'mes' | 'todos';
-type StatusFilter = 'todos' | 'pendentes' | 'completas' | 'atrasadas';
-type HojeSubTab = 'revisoes' | 'cronograma';
-
-const COLOR_MAP: { [key: string]: { bg: string; border: string; text: string; priority: number } } = {
-  'Vermelho': { bg: 'bg-red-100', border: 'border-red-400', text: 'text-red-900', priority: 1 },
-  'Amarelo': { bg: 'bg-yellow-100', border: 'border-yellow-400', text: 'text-yellow-900', priority: 2 },
-  'Verde': { bg: 'bg-green-100', border: 'border-green-400', text: 'text-green-900', priority: 3 },
-  'Roxo': { bg: 'bg-purple-100', border: 'border-purple-400', text: 'text-purple-900', priority: 2 },
-  'default': { bg: 'bg-gray-100', border: 'border-gray-400', text: 'text-gray-900', priority: 2 }
-};
-
-export const HojeView: React.FC<HojeViewProps> = ({ sheetUrl, onReviewClick }) => {
-  const [activeSubTab, setActiveSubTab] = useState<HojeSubTab>('revisoes');
-  const [data, setData] = useState<DiaryData | null>(null);
+export const HojeView: React.FC<HojeViewProps> = ({
+  sheetUrl,
+  onNavigateToCronograma,
+  onNavigateToRegistro
+}) => {
+  const [estado, setEstado] = useState<EstadoAbaHoje | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
-  const [periodFilter, setPeriodFilter] = useState<PeriodFilter>('hoje');
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('todos');
 
-  const fetchData = async () => {
-    if (!sheetUrl) {
-      setError('Configure a URL da planilha primeiro');
-      setLoading(false);
-      return;
-    }
+  // Filtros
+  const [filtroTipo, setFiltroTipo] = useState<TipoAtividade | null>(null);
+  const [filtroCor, setFiltroCor] = useState<CorRelevancia | null>(null);
 
-    setLoading(true);
-    setError('');
-
-    try {
-      const url = new URL(sheetUrl);
-      url.searchParams.set('action', 'getDiaryData');
-
-      const response = await fetch(url.toString());
-      const result = await response.json();
-
-      if (result.status === 'success') {
-        setData(result.data);
-      } else {
-        setError(result.message || 'Erro ao carregar dados');
-      }
-    } catch (err: any) {
-      setError('Erro de conexão: ' + err.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Carregar dados
   useEffect(() => {
-    fetchData();
+    const carregarDados = async () => {
+      if (!sheetUrl) {
+        setError('Configure a URL da planilha primeiro');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError('');
+
+        const [diario, dataEntry] = await Promise.all([
+          carregarDiario(sheetUrl),
+          carregarDataEntry(sheetUrl)
+        ]);
+
+        const estadoProcessado = processarAtividadesDia(diario, dataEntry);
+        setEstado(estadoProcessado);
+      } catch (err) {
+        console.error('Erro ao carregar dados:', err);
+        setError('Erro ao carregar atividades do dia');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    carregarDados();
   }, [sheetUrl]);
 
+  // Aplicar filtros
+  const estadoFiltrado = useMemo(() => {
+    if (!estado) return null;
+
+    const aplicarFiltros = (atividades: AtividadeDia[]) =>
+      atividades.filter((a) => {
+        if (filtroTipo && a.tipo !== filtroTipo) return false;
+        if (filtroCor && a.temaCor !== filtroCor) return false;
+        return true;
+      });
+
+    return {
+      ...estado,
+      concluidos: aplicarFiltros(estado.concluidos),
+      pendentes: aplicarFiltros(estado.pendentes),
+      atrasados: aplicarFiltros(estado.atrasados),
+      foraPrograma: aplicarFiltros(estado.foraPrograma)
+    };
+  }, [estado, filtroTipo, filtroCor]);
+
+  // Limpar filtros
+  const limparFiltros = () => {
+    setFiltroTipo(null);
+    setFiltroCor(null);
+  };
+
+  const temFiltrosAtivos = filtroTipo || filtroCor;
+
+  // Loading state
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-16">
-        <Loader2 className="w-12 h-12 text-green-600 animate-spin mb-4" />
-        <p className="text-gray-600 font-medium">Carregando dados do diário...</p>
+      <div className="flex items-center justify-center py-16">
+        <div className="text-center">
+          <Loader2 className="w-12 h-12 text-blue-600 mx-auto mb-4 animate-spin" />
+          <p className="text-gray-600 font-medium">Carregando atividades do dia...</p>
+        </div>
       </div>
     );
   }
 
+  // Error state
   if (error) {
     return (
       <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
         <div className="flex items-center gap-2 mb-2">
-          <AlertCircle className="w-5 h-5 text-red-600" />
-          <strong className="text-red-900">Erro</strong>
+          <AlertTriangle className="w-5 h-5 text-red-600" />
+          <h3 className="font-bold text-red-900">Erro</h3>
         </div>
         <p className="text-red-700 text-sm">{error}</p>
-        <button
-          onClick={fetchData}
-          className="mt-3 px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 transition-colors"
-        >
-          Tentar Novamente
-        </button>
       </div>
     );
   }
 
-  if (!data) {
+  if (!estado || !estadoFiltrado) {
     return (
       <div className="text-center py-8 text-gray-500">
         Nenhum dado disponível
@@ -114,345 +139,414 @@ export const HojeView: React.FC<HojeViewProps> = ({ sheetUrl, onReviewClick }) =
     );
   }
 
-  // Filtrar revisões baseado no período
-  const getFilteredReviews = (): DiaryReview[] => {
-    let reviews: DiaryReview[] = [];
-
-    switch (periodFilter) {
-      case 'hoje':
-        reviews = [...data.today.reviews];
-        break;
-      case 'semana':
-        reviews = [...data.today.reviews, ...data.upcoming.filter(r => r.daysDiff <= 7)];
-        break;
-      case 'mes':
-        reviews = [...data.today.reviews, ...data.upcoming.filter(r => r.daysDiff <= 30)];
-        break;
-      case 'todos':
-        reviews = [...data.overdue, ...data.today.reviews, ...data.upcoming];
-        break;
-    }
-
-    // Aplicar filtro de status
-    switch (statusFilter) {
-      case 'pendentes':
-        reviews = reviews.filter(r => !data.today.completed.some(c => c.tema === r.tema));
-        break;
-      case 'completas':
-        reviews = reviews.filter(r => data.today.completed.some(c => c.tema === r.tema));
-        break;
-      case 'atrasadas':
-        reviews = reviews.filter(r => r.daysDiff < 0);
-        break;
-    }
-
-    // Ordenar por prioridade (dias atrasados/faltando e cor)
-    return reviews.sort((a, b) => {
-      // Primeiro: atrasadas vêm primeiro
-      if (a.daysDiff < 0 && b.daysDiff >= 0) return -1;
-      if (a.daysDiff >= 0 && b.daysDiff < 0) return 1;
-
-      // Depois: ordenar por dias (mais urgentes primeiro)
-      if (a.daysDiff !== b.daysDiff) return a.daysDiff - b.daysDiff;
-
-      return 0;
-    });
-  };
-
-  const filteredReviews = getFilteredReviews();
-  const progressPercentage = data.today.total > 0
-    ? (data.today.completedCount / data.today.total) * 100
-    : 0;
-
-  const getPriorityIcon = (daysDiff: number) => {
-    if (daysDiff < 0) return <Flame className="w-4 h-4 text-red-600" />;
-    if (daysDiff === 0) return <Zap className="w-4 h-4 text-orange-500" />;
-    if (daysDiff <= 2) return <AlertCircle className="w-4 h-4 text-yellow-600" />;
-    return <Clock className="w-4 h-4 text-gray-400" />;
-  };
-
-  const getColorForTopic = (tema: string) => {
-    // Aqui você pode implementar lógica para buscar a cor do tema
-    // Por enquanto, vou usar uma lógica simples baseada no hash do tema
-    const hash = tema.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    const colors = ['Vermelho', 'Amarelo', 'Verde', 'Roxo'];
-    return colors[hash % colors.length];
-  };
+  const mensagem = obterMensagemMotivacional(
+    estado.stats.taxaConclusao,
+    estado.atrasados.length > 0
+  );
 
   return (
-    <div className="space-y-4">
-      {/* Header com Data */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Hoje</h2>
-          <p className="text-sm text-gray-500 flex items-center gap-1.5 mt-1">
-            <Calendar className="w-4 h-4" />
-            {data.today.date}
-          </p>
-        </div>
-        <button
-          onClick={fetchData}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          title="Atualizar dados"
-        >
-          <RefreshCw className="w-5 h-5 text-gray-600" />
-        </button>
-      </div>
-
-      {/* Sub-tabs */}
-      <div className="flex gap-2 p-1 bg-gray-100 rounded-lg">
-        <button
-          onClick={() => setActiveSubTab('revisoes')}
-          className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-            activeSubTab === 'revisoes'
-              ? 'bg-white text-green-600 shadow-sm'
-              : 'text-gray-600 hover:text-gray-900'
-          }`}
-        >
-          <CheckCircle2 className="w-4 h-4" />
-          Revisões
-        </button>
-        <button
-          onClick={() => setActiveSubTab('cronograma')}
-          className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg font-medium text-sm transition-all ${
-            activeSubTab === 'cronograma'
-              ? 'bg-white text-blue-600 shadow-sm'
-              : 'text-gray-600 hover:text-gray-900'
-          }`}
-        >
-          <CalendarDays className="w-4 h-4" />
-          Cronograma
-        </button>
-      </div>
-
-      {/* Conteúdo baseado na sub-tab ativa */}
-      {activeSubTab === 'revisoes' ? (
-        <>
-          {/* Estatísticas Principais */}
-      <div className="grid grid-cols-2 gap-3">
-        {/* Hoje */}
-        <div className="p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-xl border border-green-200">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="p-1.5 bg-green-600 rounded-lg">
-              <CalendarCheck className="w-4 h-4 text-white" />
-            </div>
-            <span className="text-xs font-bold text-green-900 uppercase tracking-wide">Hoje</span>
+    <div className="space-y-4 pb-6">
+      {/* Header com Estatísticas */}
+      <div className="p-6 bg-gradient-to-br from-blue-50 to-indigo-100 rounded-xl border-2 border-blue-200">
+        <div className="flex items-center gap-2 mb-4">
+          <CalendarIcon className="w-6 h-6 text-blue-600" />
+          <div>
+            <h2 className="text-lg font-bold text-blue-900">
+              HOJE - {formatarData(estado.dataAtual, 'completo')}
+            </h2>
+            <p className="text-sm text-blue-700">{mensagem}</p>
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-green-900">{data.today.completedCount}</span>
-            <span className="text-sm text-green-700">/ {data.today.total}</span>
-          </div>
-          <p className="text-xs text-green-700 mt-1">
-            {data.today.pendingCount} pendente{data.today.pendingCount !== 1 ? 's' : ''}
-          </p>
         </div>
 
-        {/* Este Mês */}
-        <div className="p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="p-1.5 bg-blue-600 rounded-lg">
-              <TrendingUp className="w-4 h-4 text-white" />
-            </div>
-            <span className="text-xs font-bold text-blue-900 uppercase tracking-wide">Este Mês</span>
+        {/* Cards de Resumo */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+          <div className="bg-white/70 p-4 rounded-lg text-center">
+            <CheckCircle className="w-6 h-6 text-green-600 mx-auto mb-2" />
+            <p className="text-xs text-gray-600 mb-1">Concluídos</p>
+            <p className="text-2xl font-bold text-green-700">
+              {estado.stats.totalRealizadas}/{estado.stats.totalProgramadas}
+            </p>
+            <p className="text-xs text-gray-600">{estado.stats.taxaConclusao.toFixed(0)}%</p>
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-blue-900">{data.statistics.completedThisMonth}</span>
+
+          <div className="bg-white/70 p-4 rounded-lg text-center">
+            <Clock className="w-6 h-6 text-blue-600 mx-auto mb-2" />
+            <p className="text-xs text-gray-600 mb-1">Pendentes</p>
+            <p className="text-2xl font-bold text-blue-700">{estadoFiltrado.pendentes.length}</p>
           </div>
-          <p className="text-xs text-blue-700 mt-1">revisões completadas</p>
+
+          <div className="bg-white/70 p-4 rounded-lg text-center">
+            <AlertCircleIcon className="w-6 h-6 text-red-600 mx-auto mb-2" />
+            <p className="text-xs text-gray-600 mb-1">Atrasados</p>
+            <p className="text-2xl font-bold text-red-700">{estadoFiltrado.atrasados.length}</p>
+          </div>
+
+          <div className="bg-white/70 p-4 rounded-lg text-center">
+            <AlertTriangle className="w-6 h-6 text-orange-600 mx-auto mb-2" />
+            <p className="text-xs text-gray-600 mb-1">Fora do Plano</p>
+            <p className="text-2xl font-bold text-orange-700">{estadoFiltrado.foraPrograma.length}</p>
+          </div>
         </div>
 
-        {/* Atrasadas */}
-        <div className="p-4 bg-gradient-to-br from-red-50 to-red-100 rounded-xl border border-red-200">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="p-1.5 bg-red-600 rounded-lg">
-              <AlertCircle className="w-4 h-4 text-white" />
-            </div>
-            <span className="text-xs font-bold text-red-900 uppercase tracking-wide">Atrasadas</span>
-          </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-red-900">{data.statistics.overdueCount}</span>
-          </div>
-          <p className="text-xs text-red-700 mt-1">precisam atenção</p>
+        {/* Barra de Progresso */}
+        <div className="w-full h-3 bg-blue-200 rounded-full overflow-hidden">
+          <div
+            className="h-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all duration-500"
+            style={{ width: `${Math.min(estado.stats.taxaConclusao, 100)}%` }}
+          ></div>
         </div>
 
-        {/* Total */}
-        <div className="p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl border border-purple-200">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="p-1.5 bg-purple-600 rounded-lg">
-              <Target className="w-4 h-4 text-white" />
-            </div>
-            <span className="text-xs font-bold text-purple-900 uppercase tracking-wide">Total</span>
+        {/* Breakdown por tipo */}
+        <div className="mt-4 flex justify-center gap-6 text-sm">
+          <div className="flex items-center gap-2">
+            <BookOpen className="w-4 h-4 text-purple-600" />
+            <span className="text-gray-700">
+              Primeira vez: <strong>{estado.stats.primeiraVez.concluidas}/{estado.stats.primeiraVez.programadas}</strong>
+            </span>
           </div>
-          <div className="flex items-baseline gap-2">
-            <span className="text-3xl font-bold text-purple-900">{data.statistics.totalCompleted}</span>
+          <div className="flex items-center gap-2">
+            <RefreshCw className="w-4 h-4 text-orange-600" />
+            <span className="text-gray-700">
+              Revisões: <strong>{estado.stats.revisoes.concluidas}/{estado.stats.revisoes.programadas}</strong>
+            </span>
           </div>
-          <p className="text-xs text-purple-700 mt-1">revisões feitas</p>
         </div>
       </div>
-
-      {/* Progresso de Hoje */}
-      {data.today.total > 0 && (
-        <div className="p-4 bg-white rounded-xl border-2 border-gray-200">
-          <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-bold text-gray-800">Progresso de Hoje</h3>
-            <span className="text-sm font-bold text-gray-900">{progressPercentage.toFixed(0)}%</span>
-          </div>
-          <div className="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-green-500 to-green-600 transition-all duration-500 ease-out"
-              style={{ width: `${progressPercentage}%` }}
-            ></div>
-          </div>
-        </div>
-      )}
 
       {/* Filtros */}
       <div className="p-4 bg-white rounded-xl border-2 border-gray-200 space-y-3">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 mb-2">
           <Filter className="w-4 h-4 text-gray-600" />
-          <h3 className="text-sm font-bold text-gray-800">FILTROS</h3>
+          <h3 className="text-sm font-bold text-gray-900">Filtros</h3>
+          {temFiltrosAtivos && (
+            <button
+              onClick={limparFiltros}
+              className="ml-auto text-xs text-red-600 hover:text-red-700 font-medium flex items-center gap-1"
+            >
+              <X className="w-3 h-3" />
+              Limpar
+            </button>
+          )}
         </div>
 
-        {/* Filtro de Período */}
-        <div className="space-y-2">
-          <label className="text-xs font-medium text-gray-600">Período</label>
-          <div className="flex gap-2">
-            {[
-              { value: 'hoje', label: 'Hoje' },
-              { value: 'semana', label: 'Semana' },
-              { value: 'mes', label: 'Mês' },
-              { value: 'todos', label: 'Todos' }
-            ].map(option => (
-              <button
-                key={option.value}
-                onClick={() => setPeriodFilter(option.value as PeriodFilter)}
-                className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                  periodFilter === option.value
-                    ? 'bg-green-600 text-white shadow-sm'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
+        {/* Filtro por Tipo */}
+        <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setFiltroTipo(filtroTipo === 'PRIMEIRA_VEZ' ? null : 'PRIMEIRA_VEZ')}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border-2 ${
+              filtroTipo === 'PRIMEIRA_VEZ'
+                ? 'bg-purple-50 border-purple-400 text-purple-700'
+                : 'bg-gray-100 border-gray-300 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            📚 Primeira vez
+          </button>
+          <button
+            onClick={() => setFiltroTipo(filtroTipo === 'REVISAO' ? null : 'REVISAO')}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border-2 ${
+              filtroTipo === 'REVISAO'
+                ? 'bg-orange-50 border-orange-400 text-orange-700'
+                : 'bg-gray-100 border-gray-300 text-gray-700 hover:bg-gray-200'
+            }`}
+          >
+            🔄 Revisões
+          </button>
         </div>
 
-        {/* Filtro de Status */}
-        <div className="space-y-2">
-          <label className="text-xs font-medium text-gray-600">Status</label>
-          <div className="flex gap-2">
-            {[
-              { value: 'todos', label: 'Todos' },
-              { value: 'pendentes', label: 'Pendentes' },
-              { value: 'completas', label: 'Completas' },
-              { value: 'atrasadas', label: 'Atrasadas' }
-            ].map(option => (
-              <button
-                key={option.value}
-                onClick={() => setStatusFilter(option.value as StatusFilter)}
-                className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium transition-all ${
-                  statusFilter === option.value
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
+        {/* Filtro por Cor */}
+        <div className="flex flex-wrap gap-2">
+          {(['VERDE', 'AMARELO', 'VERMELHO', 'ROXO'] as CorRelevancia[]).map(cor => (
+            <button
+              key={cor}
+              onClick={() => setFiltroCor(filtroCor === cor ? null : cor)}
+              className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border-2 ${
+                filtroCor === cor
+                  ? `${COLOR_STYLES[cor].bg} ${COLOR_STYLES[cor].border} ${COLOR_STYLES[cor].text}`
+                  : 'bg-gray-100 border-gray-300 text-gray-700 hover:bg-gray-200'
+              }`}
+            >
+              {COLOR_STYLES[cor].label}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Lista de Revisões Filtradas */}
-      <div className="p-4 bg-white rounded-xl border-2 border-gray-200">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <BarChart3 className="w-5 h-5 text-green-600" />
-            <h3 className="text-sm font-bold text-gray-800 uppercase tracking-wide">
-              Revisões ({filteredReviews.length})
-            </h3>
-          </div>
-          <span className="text-xs text-gray-500">
-            {periodFilter === 'hoje' ? 'Hoje' :
-             periodFilter === 'semana' ? 'Esta Semana' :
-             periodFilter === 'mes' ? 'Este Mês' : 'Todas'}
-          </span>
-        </div>
+      {/* Seções de Atividades */}
+      <div className="space-y-4">
+        {/* Concluídos */}
+        <SecaoAtividades
+          titulo="✅ CONCLUÍDOS HOJE"
+          atividades={estadoFiltrado.concluidos}
+          tipo="concluido"
+          onDetalhes={onNavigateToCronograma}
+          onRegistrar={onNavigateToRegistro}
+        />
 
-        {filteredReviews.length === 0 ? (
-          <div className="text-center py-8">
-            <Check className="w-12 h-12 text-green-500 mx-auto mb-2" />
-            <p className="text-gray-500 text-sm">Nenhuma revisão encontrada com os filtros aplicados</p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {filteredReviews.map((review, index) => {
-              const isCompleted = data.today.completed.some(c => c.tema === review.tema);
-              const color = getColorForTopic(review.tema);
-              const colorStyle = COLOR_MAP[color] || COLOR_MAP['default'];
+        {/* Pendentes */}
+        <SecaoAtividades
+          titulo="⏳ PENDENTES HOJE"
+          atividades={estadoFiltrado.pendentes}
+          tipo="pendente"
+          onDetalhes={onNavigateToCronograma}
+          onRegistrar={onNavigateToRegistro}
+        />
 
-              return (
-                <div
-                  key={index}
-                  onClick={() => !isCompleted && onReviewClick(review.tema)}
-                  className={`flex items-center gap-3 p-3 rounded-lg border-2 transition-all ${
-                    isCompleted
-                      ? 'bg-green-50 border-green-300'
-                      : `${colorStyle.bg} ${colorStyle.border} cursor-pointer hover:shadow-md hover:scale-[1.02]`
-                  }`}
-                >
-                  <div className="flex-shrink-0">
-                    {isCompleted ? (
-                      <CheckCircle2 className="w-6 h-6 text-green-600" />
-                    ) : (
-                      <Circle className="w-6 h-6 text-gray-400" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className={`text-sm font-medium ${
-                      isCompleted ? 'text-green-900 line-through' : colorStyle.text
-                    }`}>
-                      {review.tema}
-                    </p>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-xs text-gray-500">{review.acao}</span>
-                      <span className="text-xs text-gray-400">•</span>
-                      <span className="text-xs text-gray-500">{review.dataAgendada}</span>
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {getPriorityIcon(review.daysDiff)}
-                    {!isCompleted && (
-                      <span className={`text-xs font-bold px-2 py-1 rounded-full ${
-                        review.daysDiff < 0 ? 'bg-red-100 text-red-700' :
-                        review.daysDiff === 0 ? 'bg-orange-100 text-orange-700' :
-                        review.daysDiff <= 2 ? 'bg-yellow-100 text-yellow-700' :
-                        'bg-blue-100 text-blue-700'
-                      }`}>
-                        {review.daysDiff < 0
-                          ? `${Math.abs(review.daysDiff)}d atrás`
-                          : review.daysDiff === 0
-                          ? 'Hoje'
-                          : `${review.daysDiff}d`}
-                      </span>
-                    )}
-                    {isCompleted && (
-                      <span className="text-xs font-bold text-green-700 bg-green-100 px-2 py-1 rounded-full">
-                        Concluída
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+        {/* Atrasados */}
+        {estadoFiltrado.atrasados.length > 0 && (
+          <SecaoAtividades
+            titulo="🔴 ATRASADOS"
+            atividades={estadoFiltrado.atrasados}
+            tipo="atrasado"
+            onDetalhes={onNavigateToCronograma}
+            onRegistrar={onNavigateToRegistro}
+          />
+        )}
+
+        {/* Fora do Programado */}
+        {estadoFiltrado.foraPrograma.length > 0 && (
+          <SecaoAtividades
+            titulo="⚠️ FORA DO PROGRAMADO"
+            atividades={estadoFiltrado.foraPrograma}
+            tipo="fora"
+            onDetalhes={onNavigateToCronograma}
+            onRegistrar={onNavigateToRegistro}
+          />
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Componente de Seção
+interface SecaoAtividadesProps {
+  titulo: string;
+  atividades: AtividadeDia[];
+  tipo: 'concluido' | 'pendente' | 'atrasado' | 'fora';
+  onDetalhes?: (temaId: string) => void;
+  onRegistrar?: (atividade: AtividadeDia) => void;
+}
+
+const SecaoAtividades: React.FC<SecaoAtividadesProps> = ({
+  titulo,
+  atividades,
+  tipo,
+  onDetalhes,
+  onRegistrar
+}) => {
+  // Separar por tipo de atividade
+  const primeiraVez = atividades.filter(a => a.tipo === 'PRIMEIRA_VEZ');
+  const revisoes = atividades.filter(a => a.tipo === 'REVISAO');
+
+  if (atividades.length === 0) {
+    return (
+      <div className="p-4 bg-gray-50 rounded-xl border-2 border-gray-200">
+        <h3 className="text-sm font-bold text-gray-700 mb-2">{titulo} (0)</h3>
+        <p className="text-sm text-gray-500 text-center py-4">
+          {tipo === 'concluido' && '🎉 Continue assim!'}
+          {tipo === 'pendente' && '✅ Tudo concluído!'}
+          {tipo === 'atrasado' && '✅ Você está em dia!'}
+          {tipo === 'fora' && '✅ Tudo conforme o planejado!'}
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="p-4 bg-white rounded-xl border-2 border-gray-200">
+      <h3 className="text-sm font-bold text-gray-900 mb-4">
+        {titulo} ({atividades.length})
+      </h3>
+
+      {/* Breakdown por tipo */}
+      <div className="space-y-4">
+        {primeiraVez.length > 0 && (
+          <div>
+            <h4 className="text-xs font-bold text-purple-700 mb-2 flex items-center gap-2">
+              <BookOpen className="w-3 h-3" />
+              📚 Primeira vez ({primeiraVez.length})
+            </h4>
+            <div className="space-y-2">
+              {primeiraVez.map(atividade => (
+                <AtividadeCard
+                  key={atividade.id}
+                  atividade={atividade}
+                  onDetalhes={onDetalhes}
+                  onRegistrar={onRegistrar}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {revisoes.length > 0 && (
+          <div>
+            <h4 className="text-xs font-bold text-orange-700 mb-2 flex items-center gap-2">
+              <RefreshCw className="w-3 h-3" />
+              🔄 Revisões ({revisoes.length})
+            </h4>
+            <div className="space-y-2">
+              {revisoes.map(atividade => (
+                <AtividadeCard
+                  key={atividade.id}
+                  atividade={atividade}
+                  onDetalhes={onDetalhes}
+                  onRegistrar={onRegistrar}
+                />
+              ))}
+            </div>
           </div>
         )}
       </div>
-        </>
-      ) : (
-        <CronogramaView sheetUrl={sheetUrl} />
-      )}
+    </div>
+  );
+};
+
+// Componente de Card de Atividade
+interface AtividadeCardProps {
+  atividade: AtividadeDia;
+  onDetalhes?: (temaId: string) => void;
+  onRegistrar?: (atividade: AtividadeDia) => void;
+}
+
+const AtividadeCard: React.FC<AtividadeCardProps> = ({
+  atividade,
+  onDetalhes,
+  onRegistrar
+}) => {
+  const style = COLOR_STYLES[atividade.temaCor];
+
+  // Badge de status
+  const renderBadgeStatus = () => {
+    if (atividade.status === 'CONCLUIDO') {
+      return <span className="text-xs font-bold text-green-600">✅ Concluído</span>;
+    }
+    if (atividade.status === 'PENDENTE') {
+      return <span className="text-xs font-bold text-blue-600">⏳ Pendente</span>;
+    }
+    if (atividade.status === 'ATRASADO') {
+      return (
+        <span className="text-xs font-bold text-red-600">
+          🔴 Atrasado há {atividade.diasDeAtraso} dia{atividade.diasDeAtraso! > 1 ? 's' : ''}
+        </span>
+      );
+    }
+    if (atividade.foraPrograma) {
+      if (atividade.foraPrograma.tipo === 'ANTECIPADO') {
+        return <span className="text-xs font-bold text-cyan-600">⚡ Antecipado</span>;
+      }
+      if (atividade.foraPrograma.tipo === 'ATRASADO_CONCLUIDO') {
+        return <span className="text-xs font-bold text-yellow-600">⏱️ Recuperado</span>;
+      }
+      return <span className="text-xs font-bold text-purple-600">➕ Extra</span>;
+    }
+    return null;
+  };
+
+  // Info contextual
+  const renderInfoContextual = () => {
+    if (atividade.status === 'ATRASADO') {
+      return (
+        <p className="text-xs text-red-700">
+          Era para: {formatarData(atividade.dataProgramada, 'completo')}
+        </p>
+      );
+    }
+    if (atividade.foraPrograma) {
+      if (atividade.foraPrograma.tipo === 'ANTECIPADO' && atividade.foraPrograma.dataOriginal) {
+        return (
+          <p className="text-xs text-cyan-700">
+            Antecipado em {atividade.foraPrograma.diasDiferenca} dia{atividade.foraPrograma.diasDiferenca > 1 ? 's' : ''} (era para {formatarData(atividade.foraPrograma.dataOriginal, 'completo')})
+          </p>
+        );
+      }
+      if (atividade.foraPrograma.tipo === 'ATRASADO_CONCLUIDO' && atividade.foraPrograma.dataOriginal) {
+        return (
+          <p className="text-xs text-yellow-700">
+            Concluído com {atividade.foraPrograma.diasDiferenca} dia{atividade.foraPrograma.diasDiferenca > 1 ? 's' : ''} de atraso (era para {formatarData(atividade.foraPrograma.dataOriginal, 'completo')})
+          </p>
+        );
+      }
+      if (atividade.foraPrograma.tipo === 'EXTRA') {
+        return <p className="text-xs text-purple-700">Estudo extra - não estava programado</p>;
+      }
+    }
+    if (atividade.horaRealizada) {
+      return <p className="text-xs text-gray-600">Realizado às {atividade.horaRealizada}</p>;
+    }
+    return null;
+  };
+
+  return (
+    <div className={`p-3 rounded-lg border-l-4 ${style.border} bg-gray-50 hover:bg-gray-100 transition-colors`}>
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1">
+          {/* Nome do tema */}
+          <h5 className={`text-sm font-bold ${style.text} mb-1`}>{atividade.temaNome}</h5>
+
+          {/* Badge de tipo */}
+          <div className="flex items-center gap-2 mb-1">
+            {atividade.tipo === 'PRIMEIRA_VEZ' ? (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 border border-purple-300">
+                📚 1ª vez
+              </span>
+            ) : (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 border border-orange-300">
+                🔄 Revisão {atividade.numeroRevisao ? `#${atividade.numeroRevisao}` : ''}
+              </span>
+            )}
+            {renderBadgeStatus()}
+          </div>
+
+          {/* Info contextual */}
+          {renderInfoContextual()}
+
+          {/* Performance */}
+          {atividade.questoesFeitas && atividade.questoesFeitas > 0 && (
+            <div className="mt-2">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs text-gray-600">Performance</span>
+                <span className={`text-xs font-bold ${
+                  atividade.percentualAcerto! >= 70 ? 'text-green-600' :
+                  atividade.percentualAcerto! >= 50 ? 'text-yellow-600' : 'text-red-600'
+                }`}>
+                  {atividade.questoesCorretas}/{atividade.questoesFeitas} - {atividade.percentualAcerto}%
+                </span>
+              </div>
+              <div className="w-full h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  className={`h-full transition-all ${
+                    atividade.percentualAcerto! >= 70 ? 'bg-green-500' :
+                    atividade.percentualAcerto! >= 50 ? 'bg-yellow-500' : 'bg-red-500'
+                  }`}
+                  style={{ width: `${atividade.percentualAcerto}%` }}
+                ></div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Botões de ação */}
+        <div className="flex flex-col gap-1">
+          {onDetalhes && (
+            <button
+              onClick={() => onDetalhes(atividade.temaId)}
+              className="px-2 py-1 text-[10px] font-medium text-blue-600 bg-blue-50 border border-blue-300 rounded hover:bg-blue-100 transition-colors"
+              title="Ver detalhes no cronograma"
+            >
+              Detalhes
+            </button>
+          )}
+          {onRegistrar && atividade.status !== 'CONCLUIDO' && (
+            <button
+              onClick={() => onRegistrar(atividade)}
+              className="px-2 py-1 text-[10px] font-medium text-white bg-green-600 rounded hover:bg-green-700 transition-colors"
+              title="Registrar atividade"
+            >
+              Registrar
+            </button>
+          )}
+        </div>
+      </div>
     </div>
   );
 };
