@@ -194,6 +194,9 @@ export async function carregarCronograma(sheetUrl: string): Promise<CronogramaSt
 
     const response = await fetch(sheetUrl, {
       method: 'POST',
+      mode: 'cors',
+      cache: 'no-cache',
+      redirect: 'follow',
       body: formData
     });
 
@@ -228,6 +231,9 @@ export async function salvarCronograma(
 
     const response = await fetch(sheetUrl, {
       method: 'POST',
+      mode: 'cors',
+      cache: 'no-cache',
+      redirect: 'follow',
       body: formData
     });
 

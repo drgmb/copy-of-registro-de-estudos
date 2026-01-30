@@ -309,6 +309,9 @@ export async function carregarDiario(sheetUrl: string): Promise<RegistroDiario[]
 
     const response = await fetch(sheetUrl, {
       method: 'POST',
+      mode: 'cors',
+      cache: 'no-cache',
+      redirect: 'follow',
       body: formData
     });
 
@@ -338,6 +341,9 @@ export async function carregarDataEntry(
 
     const response = await fetch(sheetUrl, {
       method: 'POST',
+      mode: 'cors',
+      cache: 'no-cache',
+      redirect: 'follow',
       body: formData
     });
 
