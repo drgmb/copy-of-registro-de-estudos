@@ -18,8 +18,6 @@ import {
 } from '../types';
 import {
   inicializarCronograma,
-  carregarCronograma,
-  salvarCronograma,
   calcularEstatisticas
 } from '../utils/cronogramaUtils';
 import { TemaDetalhesModal } from './TemaDetalhesModal';
@@ -41,31 +39,23 @@ export const CronogramaView: React.FC<CronogramaViewProps> = ({ sheetUrl }) => {
   const [filtroSemana, setFiltroSemana] = useState<number | null>(null);
   const [busca, setBusca] = useState('');
 
-  // Inicializar ou carregar cronograma
+  // Inicializar ou carregar cronograma do localStorage
   useEffect(() => {
-    const carregarDados = async () => {
-      if (!sheetUrl) {
-        setError('Configure a URL da planilha primeiro');
-        setLoading(false);
-        return;
-      }
-
+    const carregarDados = () => {
       try {
         setLoading(true);
-        const cronogramaExistente = await carregarCronograma(sheetUrl);
 
-        if (cronogramaExistente) {
+        // Tentar carregar do localStorage
+        const cronogramaStr = localStorage.getItem('cronograma_medico');
+
+        if (cronogramaStr) {
+          const cronogramaExistente = JSON.parse(cronogramaStr);
           setCronograma(cronogramaExistente);
         } else {
           // Inicializar novo cronograma
           const novoCronograma = inicializarCronograma();
-          const sucesso = await salvarCronograma(novoCronograma, sheetUrl);
-
-          if (sucesso) {
-            setCronograma(novoCronograma);
-          } else {
-            setError('Erro ao inicializar cronograma');
-          }
+          localStorage.setItem('cronograma_medico', JSON.stringify(novoCronograma));
+          setCronograma(novoCronograma);
         }
       } catch (err) {
         setError('Erro ao carregar cronograma');
@@ -76,12 +66,12 @@ export const CronogramaView: React.FC<CronogramaViewProps> = ({ sheetUrl }) => {
     };
 
     carregarDados();
-  }, [sheetUrl]);
+  }, []);
 
-  // Atualizar cronograma e salvar
-  const atualizarCronograma = async (novoState: CronogramaState) => {
+  // Atualizar cronograma e salvar no localStorage
+  const atualizarCronograma = (novoState: CronogramaState) => {
     setCronograma(novoState);
-    await salvarCronograma(novoState, sheetUrl);
+    localStorage.setItem('cronograma_medico', JSON.stringify(novoState));
   };
 
   // Calcular estatísticas
