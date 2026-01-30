@@ -9,7 +9,6 @@ import {
   CorRelevancia
 } from '../types';
 import { TEMAS_CORES } from '../temasColors';
-import { getFromGoogleScript } from './apiProxy';
 
 // Gerar UUID simples
 function generateUUID(): string {
@@ -305,7 +304,8 @@ export async function carregarDiario(sheetUrl: string): Promise<RegistroDiario[]
   if (!sheetUrl) return [];
 
   try {
-    const result = await getFromGoogleScript(sheetUrl, 'getDiario');
+    const response = await fetch(`${sheetUrl}?action=getDiario`);
+    const result = await response.json();
 
     if (result.status === 'error') {
       console.error('Erro ao carregar diário:', result.message);
@@ -326,7 +326,8 @@ export async function carregarDataEntry(
   if (!sheetUrl) return [];
 
   try {
-    const result = await getFromGoogleScript(sheetUrl, 'getAllStudySessions');
+    const response = await fetch(`${sheetUrl}?action=getAllStudySessions`);
+    const result = await response.json();
 
     if (result.status === 'error') {
       console.error('Erro ao carregar data entry:', result.message);
