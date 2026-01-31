@@ -78,12 +78,23 @@ export const PlanejamentoView: React.FC<PlanejamentoViewProps> = ({ sheetUrl }) 
     fetchDiario();
   }, [sheetUrl]);
 
+  // Converter DD/MM/YYYY para YYYY-MM-DD
+  const converterParaISO = (data: string): string => {
+    // Se já está em formato ISO, retornar
+    if (data.includes('-')) {
+      return data.split('T')[0];
+    }
+    // Converter DD/MM/YYYY para YYYY-MM-DD
+    const [dia, mes, ano] = data.split('/');
+    return `${ano}-${mes.padStart(2, '0')}-${dia.padStart(2, '0')}`;
+  };
+
   // Processar registros para contar atividades por dia
   const diasComAtividades = useMemo(() => {
     const map: { [dataISO: string]: { temas: number; revisoes: number } } = {};
 
     registrosDiario.forEach((registro) => {
-      const dataISO = registro.data.split('T')[0]; // Garantir formato YYYY-MM-DD
+      const dataISO = converterParaISO(registro.data);
 
       if (!map[dataISO]) {
         map[dataISO] = { temas: 0, revisoes: 0 };

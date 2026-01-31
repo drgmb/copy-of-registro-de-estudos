@@ -105,6 +105,12 @@ export const DetalheDiaModal: React.FC<DetalheDiaModalProps> = ({
     return `${diaSemana}, ${dia} de ${mes} de ${ano}`;
   };
 
+  // Converter YYYY-MM-DD para DD/MM/YYYY
+  const converterParaDDMMYYYY = (dataISO: string): string => {
+    const [ano, mes, dia] = dataISO.split('-');
+    return `${dia}/${mes}/${ano}`;
+  };
+
   const handleAdicionarRegistro = async () => {
     if (!novoTema.trim()) {
       setError('Digite o nome do tema');
@@ -119,7 +125,7 @@ export const DetalheDiaModal: React.FC<DetalheDiaModalProps> = ({
       formData.append('action', 'adicionarRegistroDiario');
       formData.append('tema', novoTema.trim());
       formData.append('acao', novoTipo === 'tema' ? 'Primeira vez' : 'Revisão');
-      formData.append('data', novaData);
+      formData.append('data', converterParaDDMMYYYY(novaData));
 
       const response = await fetch(sheetUrl, {
         method: 'POST',
@@ -172,8 +178,8 @@ export const DetalheDiaModal: React.FC<DetalheDiaModalProps> = ({
       formData.append('action', 'editarDataRegistroDiario');
       formData.append('tema', registroOriginal.tema);
       formData.append('acao', registroOriginal.acao);
-      formData.append('dataAntiga', registroOriginal.data.split('T')[0]);
-      formData.append('dataNova', novaDataValue);
+      formData.append('dataAntiga', converterParaDDMMYYYY(registroOriginal.data.split('T')[0]));
+      formData.append('dataNova', converterParaDDMMYYYY(novaDataValue));
 
       const response = await fetch(sheetUrl, {
         method: 'POST',
@@ -215,7 +221,7 @@ export const DetalheDiaModal: React.FC<DetalheDiaModalProps> = ({
       formData.append('action', 'removerRegistroDiario');
       formData.append('tema', registro.tema);
       formData.append('acao', registro.acao);
-      formData.append('data', registro.data.split('T')[0]);
+      formData.append('data', converterParaDDMMYYYY(registro.data.split('T')[0]));
 
       const response = await fetch(sheetUrl, {
         method: 'POST',
