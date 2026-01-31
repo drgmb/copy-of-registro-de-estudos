@@ -335,22 +335,24 @@ function getDiarioNovo(ss) {
     var dados = aba.getDataRange().getValues();
     var registros = [];
 
+    // DIÁRIO: ID | NomedoTema | Ação | Data | STATUS
+    //          0  |     1      |  2   |  3   |   4
     for (var i = 1; i < dados.length; i++) {
       var linha = dados[i];
-      if (!linha[0] || !linha[1]) continue;
+      if (!linha[1] || !linha[3]) continue; // Pular se não tem tema ou data
 
       try {
-        var dataFormatada = formatarData(linha[0]);
+        var dataFormatada = formatarData(linha[3]); // Coluna 3 = Data
         if (!dataFormatada) {
-          Logger.log('⚠️ Data inválida na linha ' + (i + 1) + ': ' + linha[0]);
+          Logger.log('⚠️ Data inválida na linha ' + (i + 1) + ': ' + linha[3]);
           continue;
         }
 
         registros.push({
           data: dataFormatada,
-          tema: String(linha[1]),
-          acao: String(linha[2]),
-          semana: linha[3] ? Number(linha[3]) : null
+          tema: String(linha[1]),  // Coluna 1 = NomedoTema
+          acao: String(linha[2]),  // Coluna 2 = Ação
+          semana: null  // Não existe na estrutura real
         });
       } catch (e) {
         Logger.log('Erro linha ' + (i + 1) + ': ' + e.message);
@@ -381,7 +383,8 @@ function adicionarRegistroDiarioNovo(ss, tema, acao, data) {
     }
 
     var dataObj = converterData(data);
-    aba.appendRow([dataObj, tema, acao, '']);
+    // DIÁRIO: ID | NomedoTema | Ação | Data | STATUS
+    aba.appendRow(['', tema, acao, dataObj, '']);
 
     Logger.log('✅ Registro adicionado ao DIÁRIO');
     return { status: 'success', message: 'Registro adicionado' };
@@ -400,11 +403,13 @@ function editarDataRegistroDiarioNovo(ss, tema, acao, dataAntiga, dataNova) {
 
     var dados = aba.getDataRange().getValues();
 
+    // DIÁRIO: ID | NomedoTema | Ação | Data | STATUS
+    //          0  |     1      |  2   |  3   |   4
     for (var i = 1; i < dados.length; i++) {
       var linha = dados[i];
-      if (!linha[0] || !linha[1]) continue;
+      if (!linha[1] || !linha[3]) continue; // Pular se não tem tema ou data
 
-      var dataLinha = formatarData(linha[0]);
+      var dataLinha = formatarData(linha[3]); // Coluna 3 = Data
       if (!dataLinha) {
         Logger.log('⚠️ Data inválida ao editar linha ' + (i + 1));
         continue;
@@ -412,7 +417,7 @@ function editarDataRegistroDiarioNovo(ss, tema, acao, dataAntiga, dataNova) {
 
       if (dataLinha === dataAntiga && String(linha[1]) === tema && String(linha[2]) === acao) {
         var novaData = converterData(dataNova);
-        aba.getRange(i + 1, 1).setValue(novaData);
+        aba.getRange(i + 1, 4).setValue(novaData); // Coluna 4 = Data
         Logger.log('✅ Data atualizada');
         return { status: 'success', message: 'Data atualizada' };
       }
@@ -434,11 +439,13 @@ function removerRegistroDiarioNovo(ss, tema, acao, data) {
 
     var dados = aba.getDataRange().getValues();
 
+    // DIÁRIO: ID | NomedoTema | Ação | Data | STATUS
+    //          0  |     1      |  2   |  3   |   4
     for (var i = 1; i < dados.length; i++) {
       var linha = dados[i];
-      if (!linha[0] || !linha[1]) continue;
+      if (!linha[1] || !linha[3]) continue; // Pular se não tem tema ou data
 
-      var dataLinha = formatarData(linha[0]);
+      var dataLinha = formatarData(linha[3]); // Coluna 3 = Data
       if (!dataLinha) {
         Logger.log('⚠️ Data inválida ao remover linha ' + (i + 1));
         continue;
@@ -483,15 +490,17 @@ function addStudySessionNovo(ss, date, topic, details, difficulty, isClass, hasQ
     var totalNum = parseInt(totalQuestions) || 0;
     var correctNum = parseInt(correctQuestions) || 0;
 
+    // DATA ENTRY: ID | TEMA | DETALHES | DIFICULDADE | AULA | QUESTOES | TOTAL | ACERTOS | DATA
     aba.appendRow([
-      topic,
-      details || '',
-      difficulty || '',
-      isClassBool,
-      hasQuestionsBool,
-      totalNum,
-      correctNum,
-      dataObj
+      '',                // ID (vazio)
+      topic,             // TEMA
+      details || '',     // DETALHES
+      difficulty || '',  // DIFICULDADE
+      isClassBool,       // AULA
+      hasQuestionsBool,  // QUESTOES
+      totalNum,          // TOTAL
+      correctNum,        // ACERTOS
+      dataObj            // DATA
     ]);
 
     Logger.log('✅ Sessão adicionada ao DATA ENTRY');
@@ -515,25 +524,27 @@ function getAllStudySessionsNovo(ss) {
     var dados = aba.getDataRange().getValues();
     var sessoes = [];
 
+    // DATA ENTRY: ID | TEMA | DETALHES | DIFICULDADE | AULA | QUESTOES | TOTAL | ACERTOS | DATA
+    //              0  |  1   |    2     |      3      |  4   |    5     |   6   |    7    |  8
     for (var i = 1; i < dados.length; i++) {
       var linha = dados[i];
-      if (!linha[0] && !linha[7]) continue;
+      if (!linha[1] && !linha[8]) continue; // Pular se não tem tema e data
 
       try {
-        var dataFormatada = linha[7] ? formatarData(linha[7]) : '';
-        if (linha[7] && !dataFormatada) {
-          Logger.log('⚠️ Data inválida no DATA ENTRY linha ' + (i + 1) + ': ' + linha[7]);
+        var dataFormatada = linha[8] ? formatarData(linha[8]) : ''; // Coluna 8 = DATA
+        if (linha[8] && !dataFormatada) {
+          Logger.log('⚠️ Data inválida no DATA ENTRY linha ' + (i + 1) + ': ' + linha[8]);
           continue;
         }
 
         sessoes.push({
-          topic: String(linha[0] || ''),
-          details: String(linha[1] || ''),
-          difficulty: String(linha[2] || ''),
-          isClass: Boolean(linha[3]),
-          hasQuestions: Boolean(linha[4]),
-          totalQuestions: Number(linha[5]) || 0,
-          correctQuestions: Number(linha[6]) || 0,
+          topic: String(linha[1] || ''),        // Coluna 1 = TEMA
+          details: String(linha[2] || ''),      // Coluna 2 = DETALHES
+          difficulty: String(linha[3] || ''),   // Coluna 3 = DIFICULDADE
+          isClass: Boolean(linha[4]),           // Coluna 4 = AULA
+          hasQuestions: Boolean(linha[5]),      // Coluna 5 = QUESTOES
+          totalQuestions: Number(linha[6]) || 0,    // Coluna 6 = TOTAL
+          correctQuestions: Number(linha[7]) || 0,  // Coluna 7 = ACERTOS
           date: dataFormatada
         });
       } catch (e) {
@@ -558,10 +569,10 @@ function getAllStudySessionsNovo(ss) {
 // ==========================================
 function setupSheets(ss) {
   if (!ss.getSheetByName("DATA ENTRY")) {
-    ss.insertSheet("DATA ENTRY").appendRow(["ID", "TEMA", "DETALHES", "DIFICULDADE", "AULA", "QUESTOES", "TOTAL", "ACERTOS", "DATA_REF", "TIMESTAMP"]);
+    ss.insertSheet("DATA ENTRY").appendRow(["ID", "TEMA", "DETALHES", "DIFICULDADE", "AULA", "QUESTOES", "TOTAL", "ACERTOS", "DATA"]);
   }
   if (!ss.getSheetByName("DIÁRIO")) {
-    ss.insertSheet("DIÁRIO").appendRow(["ID", "TEMA", "ACAO", "DATA_AGENDADA", "STATUS"]);
+    ss.insertSheet("DIÁRIO").appendRow(["ID", "NomedoTema", "Ação", "Data", "STATUS"]);
   }
   if (!ss.getSheetByName("TEMAS")) {
     const sheet = ss.insertSheet("TEMAS");
