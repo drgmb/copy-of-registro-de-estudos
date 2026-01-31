@@ -4,6 +4,39 @@
 // ==========================================
 
 /**
+ * FUNÇÃO AUXILIAR: Formatar Date para DD/MM/YYYY
+ */
+function formatarData(data) {
+  try {
+    // Garantir que temos um objeto Date válido
+    var dataObj;
+    if (data instanceof Date) {
+      dataObj = data;
+    } else if (typeof data === 'number') {
+      dataObj = new Date(data);
+    } else if (typeof data === 'string') {
+      dataObj = new Date(data);
+    } else {
+      dataObj = new Date(data);
+    }
+
+    // Verificar se a data é válida
+    if (isNaN(dataObj.getTime())) {
+      Logger.log('❌ Data inválida em formatarData: ' + data);
+      return '';
+    }
+
+    var dia = dataObj.getDate();
+    var mes = dataObj.getMonth() + 1;
+    var ano = dataObj.getFullYear();
+    return (dia < 10 ? '0' : '') + dia + '/' + (mes < 10 ? '0' : '') + mes + '/' + ano;
+  } catch (error) {
+    Logger.log('❌ Erro em formatarData: ' + error.message);
+    return '';
+  }
+}
+
+/**
  * FUNÇÃO 1: getDiario
  * Buscar todos os registros do DIÁRIO
  * Chamada via GET: ?action=getDiario
@@ -32,11 +65,7 @@ function getDiario() {
       if (!row[0] || !row[1]) continue;
 
       try {
-        var dataFormatada = Utilities.formatDate(
-          new Date(row[0]),
-          Session.getScriptTimeZone(),
-          'yyyy-MM-dd'
-        );
+        var dataFormatada = formatarData(new Date(row[0]));
 
         diario.push({
           data: dataFormatada,

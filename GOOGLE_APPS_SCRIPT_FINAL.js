@@ -33,10 +33,33 @@ function converterData(dataString) {
 }
 
 function formatarData(data) {
-  var dia = data.getDate();
-  var mes = data.getMonth() + 1;
-  var ano = data.getFullYear();
-  return (dia < 10 ? '0' : '') + dia + '/' + (mes < 10 ? '0' : '') + mes + '/' + ano;
+  try {
+    // Garantir que temos um objeto Date válido
+    var dataObj;
+    if (data instanceof Date) {
+      dataObj = data;
+    } else if (typeof data === 'number') {
+      dataObj = new Date(data);
+    } else if (typeof data === 'string') {
+      dataObj = new Date(data);
+    } else {
+      dataObj = new Date(data);
+    }
+
+    // Verificar se a data é válida
+    if (isNaN(dataObj.getTime())) {
+      Logger.log('❌ Data inválida em formatarData: ' + data);
+      return '';
+    }
+
+    var dia = dataObj.getDate();
+    var mes = dataObj.getMonth() + 1;
+    var ano = dataObj.getFullYear();
+    return (dia < 10 ? '0' : '') + dia + '/' + (mes < 10 ? '0' : '') + mes + '/' + ano;
+  } catch (error) {
+    Logger.log('❌ Erro em formatarData: ' + error.message);
+    return '';
+  }
 }
 
 // SISTEMA DE REVISÕES ESPAÇADAS - VERSÃO COMPLETA
@@ -317,8 +340,14 @@ function getDiarioNovo(ss) {
       if (!linha[0] || !linha[1]) continue;
 
       try {
+        var dataFormatada = formatarData(linha[0]);
+        if (!dataFormatada) {
+          Logger.log('⚠️ Data inválida na linha ' + (i + 1) + ': ' + linha[0]);
+          continue;
+        }
+
         registros.push({
-          data: formatarData(new Date(linha[0])),
+          data: dataFormatada,
           tema: String(linha[1]),
           acao: String(linha[2]),
           semana: linha[3] ? Number(linha[3]) : null
@@ -375,7 +404,11 @@ function editarDataRegistroDiarioNovo(ss, tema, acao, dataAntiga, dataNova) {
       var linha = dados[i];
       if (!linha[0] || !linha[1]) continue;
 
-      var dataLinha = formatarData(new Date(linha[0]));
+      var dataLinha = formatarData(linha[0]);
+      if (!dataLinha) {
+        Logger.log('⚠️ Data inválida ao editar linha ' + (i + 1));
+        continue;
+      }
 
       if (dataLinha === dataAntiga && String(linha[1]) === tema && String(linha[2]) === acao) {
         var novaData = converterData(dataNova);
@@ -405,7 +438,11 @@ function removerRegistroDiarioNovo(ss, tema, acao, data) {
       var linha = dados[i];
       if (!linha[0] || !linha[1]) continue;
 
-      var dataLinha = formatarData(new Date(linha[0]));
+      var dataLinha = formatarData(linha[0]);
+      if (!dataLinha) {
+        Logger.log('⚠️ Data inválida ao remover linha ' + (i + 1));
+        continue;
+      }
 
       if (dataLinha === data && String(linha[1]) === tema && String(linha[2]) === acao) {
         aba.deleteRow(i + 1);
@@ -483,7 +520,11 @@ function getAllStudySessionsNovo(ss) {
       if (!linha[0] && !linha[7]) continue;
 
       try {
-        var dataFormatada = linha[7] ? formatarData(new Date(linha[7])) : '';
+        var dataFormatada = linha[7] ? formatarData(linha[7]) : '';
+        if (linha[7] && !dataFormatada) {
+          Logger.log('⚠️ Data inválida no DATA ENTRY linha ' + (i + 1) + ': ' + linha[7]);
+          continue;
+        }
 
         sessoes.push({
           topic: String(linha[0] || ''),
