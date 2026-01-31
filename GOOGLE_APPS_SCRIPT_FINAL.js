@@ -512,67 +512,6 @@ function getAllStudySessionsNovo(ss) {
   }
 }
 
-  const action = e.parameter.action || '';
-
-  try {
-    const ss = SpreadsheetApp.getActiveSpreadsheet();
-
-    if (action === 'getDiaryData') {
-      return ContentService.createTextOutput(JSON.stringify(getDiaryData(ss)))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-
-    if (action === 'getDashboardData') {
-      return ContentService.createTextOutput(JSON.stringify(getDashboardData(ss)))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-
-    if (action === 'getCronograma') {
-      return ContentService.createTextOutput(JSON.stringify(getCronograma(ss)))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-
-    if (action === 'getMetricas') {
-      const periodo = e.parameter.periodo || 'semana';
-      return ContentService.createTextOutput(JSON.stringify(getMetricas(ss, periodo)))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-
-    if (action === 'getListaMestraTemas') {
-      return ContentService.createTextOutput(JSON.stringify(getListaMestraTemas(ss)))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-
-    if (action === 'getCronogramaCompleto') {
-      return ContentService.createTextOutput(JSON.stringify(getCronogramaCompleto(ss)))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-
-    if (action === 'getDiario') {
-      return ContentService.createTextOutput(JSON.stringify(getDiario(ss)))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-
-    if (action === 'getAllStudySessions') {
-      return ContentService.createTextOutput(JSON.stringify(getAllStudySessions(ss)))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-
-    return ContentService.createTextOutput(JSON.stringify({ 'status': 'ok' }))
-      .setMimeType(ContentService.MimeType.JSON);
-
-  } catch (err) {
-    return ContentService.createTextOutput(JSON.stringify({
-      'status': 'error',
-      'message': err.toString()
-    })).setMimeType(ContentService.MimeType.JSON);
-  }
-}
-
-// ==========================================
-// FUNÇÃO PRINCIPAL - doPost
-// ==========================================
-
 // ==========================================
 // CONFIGURAÇÃO DAS PLANILHAS
 // ==========================================
@@ -696,7 +635,7 @@ function setupHojeSheet(ss) {
   hojeSheet.getRange(currentRow, 1, 3, 3).setBorder(true, true, true, true, false, false, "#d32f2f", SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
 
   // Adicionar valores abaixo do título
-  hojeSheet.getRange(currentRow + 1, 1).setFormula("=COUNTIFS(DIÁRIO!D:D,\\"<\\"&TODAY(),DIÁRIO!E:E,TRUE,DIÁRIO!C:C,\\"Revisão\\")");
+  hojeSheet.getRange(currentRow + 1, 1).setFormula('=COUNTIFS(DIÁRIO!D:D,"<"&TODAY(),DIÁRIO!E:E,TRUE,DIÁRIO!C:C,"Revisão")');
   hojeSheet.getRange(currentRow + 1, 1).setFontSize(24).setFontWeight("bold").setHorizontalAlignment("center");
   hojeSheet.getRange(currentRow + 2, 1).setValue("revisões atrasadas");
   hojeSheet.getRange(currentRow + 2, 1).setFontSize(9).setHorizontalAlignment("center");
@@ -709,7 +648,7 @@ function setupHojeSheet(ss) {
   hojeSheet.getRange(currentRow, 4, 3, 3).setBorder(true, true, true, true, false, false, "#f57c00", SpreadsheetApp.BorderStyle.SOLID_MEDIUM);
 
   // Adicionar valores abaixo do título
-  hojeSheet.getRange(currentRow + 1, 4).setFormula("=COUNTIFS(DIÁRIO!D:D,\\">\\"&TODAY(),DIÁRIO!D:D,\\"<=\\"&TODAY()+7,DIÁRIO!E:E,TRUE)");
+  hojeSheet.getRange(currentRow + 1, 4).setFormula('=COUNTIFS(DIÁRIO!D:D,">"&TODAY(),DIÁRIO!D:D,"<="&TODAY()+7,DIÁRIO!E:E,TRUE)');
   hojeSheet.getRange(currentRow + 1, 4).setFontSize(24).setFontWeight("bold").setHorizontalAlignment("center");
   hojeSheet.getRange(currentRow + 2, 4).setValue("revisões próximas");
   hojeSheet.getRange(currentRow + 2, 4).setFontSize(9).setHorizontalAlignment("center");
@@ -800,7 +739,7 @@ function setupHojeSheet(ss) {
 
   // Mensagem quando não há revisões atrasadas
   hojeSheet.getRange(currentRow, 1, 1, 6).merge();
-  hojeSheet.getRange(currentRow, 1).setFormula("=IF(COUNTIFS(DIÁRIO!D:D,\\"<\\"&TODAY(),DIÁRIO!E:E,TRUE,DIÁRIO!C:C,\\"Revisão\\")=0,\\"Parabéns! Nenhuma revisão atrasada.\\",\\"\\")");
+  hojeSheet.getRange(currentRow, 1).setFormula('=IF(COUNTIFS(DIÁRIO!D:D,"<"&TODAY(),DIÁRIO!E:E,TRUE,DIÁRIO!C:C,"Revisão")=0,"Parabéns! Nenhuma revisão atrasada.","")');
   hojeSheet.getRange(currentRow, 1).setBackground("#e8f5e9").setFontColor("#2e7d32").setFontStyle("italic");
   hojeSheet.getRange(currentRow, 1).setHorizontalAlignment("center").setVerticalAlignment("middle");
   hojeSheet.setRowHeight(currentRow, 40);
@@ -849,7 +788,7 @@ function setupHojeSheet(ss) {
 
   // Mensagem quando não há próximas revisões
   hojeSheet.getRange(currentRow, 1, 1, 6).merge();
-  hojeSheet.getRange(currentRow, 1).setFormula("=IF(COUNTIFS(DIÁRIO!D:D,\\">\\"&TODAY(),DIÁRIO!D:D,\\"<=\\"&TODAY()+7,DIÁRIO!E:E,TRUE)=0,\\"Nenhuma revisão programada para os próximos 7 dias.\\",\\"\\")");
+  hojeSheet.getRange(currentRow, 1).setFormula('=IF(COUNTIFS(DIÁRIO!D:D,">"&TODAY(),DIÁRIO!D:D,"<="&TODAY()+7,DIÁRIO!E:E,TRUE)=0,"Nenhuma revisão programada para os próximos 7 dias.","")');
   hojeSheet.getRange(currentRow, 1).setBackground("#fff3e0").setFontColor("#e65100").setFontStyle("italic");
   hojeSheet.getRange(currentRow, 1).setHorizontalAlignment("center").setVerticalAlignment("middle");
   hojeSheet.setRowHeight(currentRow, 40);
@@ -2164,144 +2103,6 @@ function saveCronograma(ss, dataStr) {
 }
 
 // ==========================================
-// FUNÇÕES DA ABA HOJE - DIÁRIO
-// ==========================================
-
-// Buscar todos os registros do DIÁRIO
-function getDiario(ss) {
-  try {
-    const diarioSheet = ss.getSheetByName("DIÁRIO");
-
-    if (!diarioSheet) {
-      return {
-        status: 'success',
-        data: []
-      };
-    }
-
-    const lastRow = diarioSheet.getLastRow();
-    if (lastRow <= 1) {
-      return {
-        status: 'success',
-        data: []
-      };
-    }
-
-    // Buscar dados da aba DIÁRIO
-    // Estrutura: ID | Nome do Tema | Ação | Data | STATUS
-    const data = diarioSheet.getRange(2, 1, lastRow - 1, 5).getValues();
-
-    const registros = [];
-    for (let i = 0; i < data.length; i++) {
-      const row = data[i];
-      if (!row[1] || !row[3]) continue; // Pular se não tem tema ou data
-
-      // Validar e converter data (coluna D = índice 3)
-      let dataISO;
-      try {
-        if (row[3] instanceof Date) {
-          dataISO = row[3].toISOString();
-        } else {
-          const dateObj = new Date(row[3]);
-          if (isNaN(dateObj.getTime())) {
-            continue; // Pular se data inválida
-          }
-          dataISO = dateObj.toISOString();
-        }
-      } catch (e) {
-        continue; // Pular se erro ao converter data
-      }
-
-      registros.push({
-        data: dataISO,
-        tema: row[1].toString(), // Coluna B: Nome do Tema
-        acao: row[2] ? row[2].toString() : 'Primeira vez', // Coluna C: Ação
-        semana: null // Não tem coluna de semana nesta estrutura
-      });
-    }
-
-    return {
-      status: 'success',
-      data: registros
-    };
-  } catch (err) {
-    return {
-      status: 'error',
-      message: 'Erro ao carregar diário: ' + err.toString()
-    };
-  }
-}
-
-// Buscar todas as sessões de estudo do DATA ENTRY
-function getAllStudySessions(ss) {
-  try {
-    const dataEntrySheet = ss.getSheetByName("DATA ENTRY");
-
-    if (!dataEntrySheet) {
-      return {
-        status: 'success',
-        data: []
-      };
-    }
-
-    const lastRow = dataEntrySheet.getLastRow();
-    if (lastRow <= 1) {
-      return {
-        status: 'success',
-        data: []
-      };
-    }
-
-    // Buscar dados da aba DATA ENTRY
-    // Estrutura: ID | TEMA | DETALHES | DIFICULDADE | AULA | QUESTOES | TOTAL | ACERTOS | DATA
-    const data = dataEntrySheet.getRange(2, 1, lastRow - 1, 9).getValues();
-
-    const sessions = [];
-    for (let i = 0; i < data.length; i++) {
-      const row = data[i];
-      if (!row[1] || !row[8]) continue; // Pular se não tem tema ou data
-
-      // Validar e converter data (coluna I = índice 8)
-      let dateISO;
-      try {
-        if (row[8] instanceof Date) {
-          dateISO = row[8].toISOString();
-        } else {
-          const dateObj = new Date(row[8]);
-          if (isNaN(dateObj.getTime())) {
-            continue; // Pular se data inválida
-          }
-          dateISO = dateObj.toISOString();
-        }
-      } catch (e) {
-        continue; // Pular se erro ao converter data
-      }
-
-      sessions.push({
-        date: dateISO,
-        topic: row[1].toString(), // Coluna B: TEMA
-        details: row[2] ? row[2].toString() : '', // Coluna C: DETALHES
-        difficulty: row[3] ? row[3].toString() : '', // Coluna D: DIFICULDADE
-        isClass: row[4] ? row[4].toString().toLowerCase() === 'sim' || row[4].toString().toLowerCase() === 'true' || row[4] === true : false, // Coluna E: AULA
-        hasQuestions: row[5] ? row[5].toString().toLowerCase() === 'sim' || row[5].toString().toLowerCase() === 'true' || row[5] === true : false, // Coluna F: QUESTOES
-        totalQuestions: row[6] ? parseInt(row[6]) : 0, // Coluna G: TOTAL
-        correctQuestions: row[7] ? parseInt(row[7]) : 0 // Coluna H: ACERTOS
-      });
-    }
-
-    return {
-      status: 'success',
-      data: sessions
-    };
-  } catch (err) {
-    return {
-      status: 'error',
-      message: 'Erro ao carregar sessões de estudo: ' + err.toString()
-    };
-  }
-}
-
-// ==========================================
 // FUNÇÕES PARA CRONOGRAMA (NOVO)
 // ==========================================
 
@@ -2481,3 +2282,4 @@ function salvarProgresso(ss, progresso) {
       message: 'Erro ao salvar progresso: ' + err.toString()
     };
   }
+}
